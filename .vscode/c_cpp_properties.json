@@ -1,0 +1,15 @@
+{
+  "version": 4,
+  "configurations": [
+      {
+          "name": "Windows",
+          "includePath": [
+              "${VULKAN_SDK}/Include",
+              "${GLFW_PATH}/include"
+          ],
+          "intelliSenseMode": "${default}",
+          "compilerPath": "C:\\raylib\\w64devkit\\bin\\g++.exe",
+          "cppStandard": "gnu++20"
+      }
+  ]
+}
