@@ -10,6 +10,7 @@
 #include <fstream>
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+#define VK_ENABLE_BETA_EXTENSIONS
 
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
 #include <vulkan/vulkan_raii.hpp>
@@ -70,7 +71,10 @@ private:
   vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
   vk::raii::PhysicalDevice physicalDevice = nullptr;
 
-  std::vector<const char *> requiredDeviceExtension = {vk::KHRSwapchainExtensionName};
+  std::vector<const char *> requiredDeviceExtension = {
+      vk::KHRSwapchainExtensionName,
+      VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
+  };
 
   uint32_t queueIndex = ~0;
 
@@ -186,7 +190,10 @@ private:
       throw std::runtime_error("Required extension not supported: " + std::string(*unsupportedPropertyIt));
     }
 
+    requiredExtensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+
     vk::InstanceCreateInfo createInfo{
+        .flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR,
         .pApplicationInfo = &appInfo,
         .enabledLayerCount = static_cast<uint32_t>(requiredLayers.size()),
         .ppEnabledLayerNames = requiredLayers.data(),
