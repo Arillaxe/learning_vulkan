@@ -11,6 +11,7 @@
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #define VK_ENABLE_BETA_EXTENSIONS
+#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
 #include <vulkan/vulkan_raii.hpp>
@@ -75,7 +76,7 @@ private:
 
   std::vector<const char *> requiredDeviceExtension = {
       vk::KHRSwapchainExtensionName,
-      VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
+      // VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
   };
 
   uint32_t queueIndex = ~0;
@@ -102,6 +103,8 @@ private:
 
   uint32_t frameIndex = 0;
 
+  bool framebufferResized = false;
+
   void initWindow()
   {
     glfwInit();
@@ -110,6 +113,11 @@ private:
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+
+    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+    glfwSetWindowUserPointer(window, this);
+
+    glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_TRUE);
   }
 
   void initVulkan()
@@ -701,9 +709,23 @@ private:
       throw std::runtime_error("failed to wait for fence!");
     }
 
-    device.resetFences(*drawFences[frameIndex]);
-
     auto [result, imageIndex] = swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphores[frameIndex], nullptr);
+
+    if (result == vk::Result::eErrorOutOfDateKHR)
+    {
+      recreateSwapChain();
+
+      return;
+    }
+
+    if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
+    {
+      assert(result == vk::Result::eTimeout || result == vk::Result::eNotReady);
+
+      throw std::runtime_error("failed to aquire swap chain image!");
+    }
+
+    device.resetFences(*drawFences[frameIndex]);
 
     commandBuffers[frameIndex].reset();
     recordCommandBuffer(imageIndex);
@@ -733,7 +755,52 @@ private:
 
     result = graphicsQueue.presentKHR(presentInfoKHR);
 
+    if (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR || framebufferResized)
+    {
+      framebufferResized = false;
+
+      recreateSwapChain();
+    }
+    else
+    {
+      assert(result == vk::Result::eSuccess);
+    }
+
     frameIndex = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+  }
+
+  static void framebufferResizeCallback(GLFWwindow *window, int width, int height)
+  {
+    auto app = reinterpret_cast<HelloTriangleApplication *>(glfwGetWindowUserPointer(window));
+
+    app->framebufferResized = true;
+  }
+
+  void cleanUpSwapChain()
+  {
+    swapChainImageViews.clear();
+    swapChain = nullptr;
+  }
+
+  void recreateSwapChain()
+  {
+    int width = 0;
+    int height = 0;
+
+    glfwGetFramebufferSize(window, &width, &height);
+
+    while (width == 0 || height == 0)
+    {
+      glfwGetFramebufferSize(window, &width, &height);
+      glfwWaitEvents();
+    }
+
+    device.waitIdle();
+
+    cleanUpSwapChain();
+
+    createSwapChain();
+    createImageViews();
   }
 };
 
