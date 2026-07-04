@@ -1,5 +1,5 @@
 struct VSInput {
-    float2 inPosition;
+    float3 inPosition;
     float2 inTexCoord;;
 };
 
@@ -21,7 +21,7 @@ Sampler2D texture;
 VSOutput vertMain(VSInput input) {
     VSOutput output;
 
-    output.pos = mul(ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.inPosition, 0, 1))));
+    output.pos = mul(ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.inPosition, 1))));
     output.fragTexCoord = input.inTexCoord;
 
     return output;
