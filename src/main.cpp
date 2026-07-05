@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <fstream>
 #include <chrono>
+#include <unordered_map>
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #define VK_ENABLE_BETA_EXTENSIONS
@@ -28,9 +29,14 @@ import vulkan_hpp;
 #include <glm/vec3.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
 
 struct Vertex
 {
@@ -63,7 +69,24 @@ struct Vertex
         },
     }};
   }
+
+  bool operator==(const Vertex &other) const
+  {
+    return pos == other.pos && texCoord == other.texCoord;
+  }
 };
+
+namespace std
+{
+  template <>
+  struct hash<Vertex>
+  {
+    size_t operator()(Vertex const &vertex) const
+    {
+      return hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
+    }
+  };
+}
 
 struct UniformBufferObject
 {
@@ -72,24 +95,10 @@ struct UniformBufferObject
   glm::mat4 proj;
 };
 
-const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f}},
-
-    {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f}},
-    {{0.5f, -0.5f, -0.5f}, {1.0f, 0.0f}},
-    {{0.5f, 0.5f, -0.5f}, {1.0f, 1.0f}},
-    {{-0.5f, 0.5f, -0.5f}, {0.0f, 1.0f}},
-};
-
-const std::vector<uint16_t> indices = {
-    0, 1, 2, 2, 3, 0,
-    4, 5, 6, 6, 7, 4};
-
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
+const std::string MODEL_PATH = "models/viking_room.obj";
+const std::string TEXTURE_PATH = "textures/viking_room.png";
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -193,6 +202,9 @@ private:
   vk::raii::DeviceMemory depthImageMemory = nullptr;
   vk::raii::ImageView depthImageView = nullptr;
 
+  std::vector<Vertex> vertices;
+  std::vector<uint32_t> indices;
+
   bool framebufferResized = false;
 
   void initWindow()
@@ -226,6 +238,7 @@ private:
     createTextureImage();
     createTextureImageView();
     createTextureSampler();
+    loadModel();
     createVertexBuffer();
     createIndexBuffer();
     createUniformBuffers();
@@ -750,7 +763,7 @@ private:
     commandBuffers[frameIndex].beginRendering(renderingInfo);
     commandBuffers[frameIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
     commandBuffers[frameIndex].bindVertexBuffers(0, *vertexBuffer, {0});
-    commandBuffers[frameIndex].bindIndexBuffer(*indexBuffer, 0, vk::IndexType::eUint16);
+    commandBuffers[frameIndex].bindIndexBuffer(*indexBuffer, 0, vk::IndexTypeValue<decltype(indices)::value_type>::value);
     commandBuffers[frameIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, *descriptorSets[frameIndex], nullptr);
 
     vk::Viewport viewport{
@@ -1138,7 +1151,7 @@ private:
   void createTextureImage()
   {
     int texWidth, texHeight, texChannels;
-    stbi_uc *pixels = stbi_load("textures/ramazan.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    stbi_uc *pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     vk::DeviceSize imageSize = texWidth * texHeight * 4;
 
     if (!pixels)
@@ -1336,6 +1349,49 @@ private:
         {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
         vk::ImageTiling::eOptimal,
         vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+  }
+
+  void loadModel()
+  {
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string warn, err;
+
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str()))
+    {
+      throw std::runtime_error(warn + err);
+    }
+
+    std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+
+    for (const auto &shape : shapes)
+    {
+      for (const auto &index : shape.mesh.indices)
+      {
+        Vertex vertex{};
+
+        vertex.pos = {
+            attrib.vertices[3 * index.vertex_index + 0],
+            attrib.vertices[3 * index.vertex_index + 1],
+            attrib.vertices[3 * index.vertex_index + 2],
+        };
+
+        vertex.texCoord = {
+            attrib.texcoords[2 * index.texcoord_index + 0],
+            1.0f - attrib.texcoords[2 * index.texcoord_index + 1],
+        };
+
+        auto [it, inserted] = uniqueVertices.insert({vertex, static_cast<uint32_t>(vertices.size())});
+
+        if (inserted)
+        {
+          vertices.push_back(vertex);
+        }
+
+        indices.push_back(it->second);
+      }
+    }
   }
 };
 
