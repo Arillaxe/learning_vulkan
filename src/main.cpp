@@ -207,6 +207,12 @@ private:
 
   uint32_t mipLevels = 0;
 
+  vk::SampleCountFlagBits msaaSamples = vk::SampleCountFlagBits::e1;
+
+  vk::raii::Image colorImage = nullptr;
+  vk::raii::DeviceMemory colorImageMemory = nullptr;
+  vk::raii::ImageView colorImageView = nullptr;
+
   bool framebufferResized = false;
 
   void initWindow()
@@ -236,6 +242,7 @@ private:
     createDescriptorSetLayout();
     createGraphicsPipeline();
     createCommandPool();
+    createColorResources();
     createDepthResources();
     createTextureImage();
     createTextureImageView();
@@ -399,6 +406,7 @@ private:
                                                          vk::PhysicalDeviceVulkan13Features,
                                                          vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
     bool supportsRequiredFeatures = features.template get<vk::PhysicalDeviceFeatures2>().features.samplerAnisotropy &&
+                                    features.template get<vk::PhysicalDeviceFeatures2>().features.sampleRateShading &&
                                     features.template get<vk::PhysicalDeviceVulkan11Features>().shaderDrawParameters &&
                                     features.template get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering &&
                                     features.template get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState;
@@ -410,13 +418,18 @@ private:
   void pickPhysicalDevice()
   {
     std::vector<vk::raii::PhysicalDevice> physicalDevices = instance.enumeratePhysicalDevices();
-    auto const devIter = std::ranges::find_if(physicalDevices, [&](auto const &physicalDevice)
-                                              { return isDeviceSuitable(physicalDevice); });
-    if (devIter == physicalDevices.end())
+
+    for (const auto &device : physicalDevices)
     {
-      throw std::runtime_error("failed to find a suitable GPU!");
+      if (isDeviceSuitable(device))
+      {
+        physicalDevice = device;
+        msaaSamples = getMaxUsableSampleCount();
+        return;
+      }
     }
-    physicalDevice = *devIter;
+
+    throw std::runtime_error("failed to find a suitable GPU!");
   }
 
   void createLogicalDevice()
@@ -444,7 +457,10 @@ private:
                        vk::PhysicalDeviceVulkan13Features,
                        vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
         featureChain = {
-            {.features = {.samplerAnisotropy = true}},
+            {.features = {
+                 .sampleRateShading = true,
+                 .samplerAnisotropy = true,
+             }},
             {.shaderDrawParameters = true},
             {.synchronization2 = true, .dynamicRendering = true},
             {.extendedDynamicState = true},
@@ -633,8 +649,9 @@ private:
     };
 
     vk::PipelineMultisampleStateCreateInfo multisampling{
-        .rasterizationSamples = vk::SampleCountFlagBits::e1,
-        .sampleShadingEnable = vk::False,
+        .rasterizationSamples = msaaSamples,
+        .sampleShadingEnable = vk::True,
+        .minSampleShading = 0.2f,
     };
 
     vk::PipelineColorBlendAttachmentState colorBlendAttachment{
@@ -727,6 +744,16 @@ private:
         vk::ImageAspectFlagBits::eColor);
 
     transition_image_layout(
+        *colorImage,
+        vk::ImageLayout::eUndefined,
+        vk::ImageLayout::eColorAttachmentOptimal,
+        vk::AccessFlagBits2::eColorAttachmentWrite,
+        vk::AccessFlagBits2::eColorAttachmentWrite,
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        vk::ImageAspectFlagBits::eColor);
+
+    transition_image_layout(
         *depthImage,
         vk::ImageLayout::eUndefined,
         vk::ImageLayout::eDepthAttachmentOptimal,
@@ -740,8 +767,11 @@ private:
     vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
 
     vk::RenderingAttachmentInfo attachmentInfo = {
-        .imageView = swapChainImageViews[imageIndex],
+        .imageView = colorImageView,
         .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+        .resolveMode = vk::ResolveModeFlagBits::eAverage,
+        .resolveImageView = swapChainImageViews[imageIndex],
+        .resolveImageLayout = vk::ImageLayout::eColorAttachmentOptimal,
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eStore,
         .clearValue = clearColor,
@@ -954,6 +984,7 @@ private:
     cleanUpSwapChain();
     createSwapChain();
     createImageViews();
+    createColorResources();
     createDepthResources();
   }
 
@@ -1171,7 +1202,7 @@ private:
 
     stbi_image_free(pixels);
 
-    std::tie(textureImage, textureImageMemory) = createImage(texWidth, texHeight, mipLevels, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    std::tie(textureImage, textureImageMemory) = createImage(texWidth, texHeight, mipLevels, vk::SampleCountFlagBits::e1, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     vk::raii::CommandBuffer commandBuffer = beginSingleTimeCommands();
     transitionImageLayout(commandBuffer, textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLevels);
@@ -1182,7 +1213,7 @@ private:
     endSingleTimeCommands(std::move(commandBuffer));
   }
 
-  std::pair<vk::raii::Image, vk::raii::DeviceMemory> createImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties)
+  std::pair<vk::raii::Image, vk::raii::DeviceMemory> createImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::SampleCountFlagBits numSamples, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties)
   {
     vk::ImageCreateInfo imageInfo{
         .imageType = vk::ImageType::e2D,
@@ -1190,7 +1221,7 @@ private:
         .extent = {width, height, 1},
         .mipLevels = mipLevels,
         .arrayLayers = 1,
-        .samples = vk::SampleCountFlagBits::e1,
+        .samples = numSamples,
         .tiling = tiling,
         .usage = usage,
         .sharingMode = vk::SharingMode::eExclusive,
@@ -1330,7 +1361,7 @@ private:
   void createDepthResources()
   {
     vk::Format depthFormat = findDepthFormat();
-    std::tie(depthImage, depthImageMemory) = createImage(swapChainExtent.width, swapChainExtent.height, 1, depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    std::tie(depthImage, depthImageMemory) = createImage(swapChainExtent.width, swapChainExtent.height, 1, msaaSamples, depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
     depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
   }
 
@@ -1469,6 +1500,47 @@ private:
     barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 
     commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, barrier);
+  }
+
+  vk::SampleCountFlagBits getMaxUsableSampleCount()
+  {
+    vk::PhysicalDeviceProperties physicalDeviceProperties = physicalDevice.getProperties();
+
+    vk::SampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+    if (counts & vk::SampleCountFlagBits::e64)
+    {
+      return vk::SampleCountFlagBits::e64;
+    }
+    if (counts & vk::SampleCountFlagBits::e32)
+    {
+      return vk::SampleCountFlagBits::e32;
+    }
+    if (counts & vk::SampleCountFlagBits::e16)
+    {
+      return vk::SampleCountFlagBits::e16;
+    }
+    if (counts & vk::SampleCountFlagBits::e8)
+    {
+      return vk::SampleCountFlagBits::e8;
+    }
+    if (counts & vk::SampleCountFlagBits::e4)
+    {
+      return vk::SampleCountFlagBits::e4;
+    }
+    if (counts & vk::SampleCountFlagBits::e2)
+    {
+      return vk::SampleCountFlagBits::e2;
+    }
+
+    return vk::SampleCountFlagBits::e1;
+  }
+
+  void createColorResources()
+  {
+    vk::Format colorFormat = swapChainSurfaceFormat.format;
+
+    std::tie(colorImage, colorImageMemory) = createImage(swapChainExtent.width, swapChainExtent.height, 1, msaaSamples, colorFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    colorImageView = createImageView(colorImage, colorFormat, vk::ImageAspectFlagBits::eColor, 1);
   }
 };
 
