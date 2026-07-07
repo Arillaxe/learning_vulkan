@@ -10,6 +10,7 @@
 #include <fstream>
 #include <chrono>
 #include <unordered_map>
+#include <random>
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #define VK_ENABLE_BETA_EXTENSIONS
@@ -37,6 +38,15 @@ import vulkan_hpp;
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
+
+constexpr int PARTICLE_COUNT = 4096;
+
+struct Particle
+{
+  glm::vec2 pos;
+  glm::vec2 vel;
+  glm::vec4 color;
+};
 
 struct Vertex
 {
@@ -93,6 +103,7 @@ struct UniformBufferObject
   glm::mat4 model;
   glm::mat4 view;
   glm::mat4 proj;
+  float deltaTime;
 };
 
 constexpr uint32_t WIDTH = 800;
@@ -152,6 +163,8 @@ private:
   std::vector<const char *> requiredDeviceExtension = {
       vk::KHRSwapchainExtensionName,
       // VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
+      vk::EXTExtendedDynamicStateExtensionName,
+      vk::EXTExtendedDynamicState3ExtensionName,
   };
 
   uint32_t queueIndex = ~0;
@@ -170,6 +183,8 @@ private:
 
   vk::raii::PipelineLayout pipelineLayout = nullptr;
   vk::raii::Pipeline graphicsPipeline = nullptr;
+
+  vk::raii::Pipeline computePipeline = nullptr;
 
   vk::raii::CommandPool commandPool = nullptr;
   std::vector<vk::raii::CommandBuffer> commandBuffers;
@@ -213,6 +228,9 @@ private:
   vk::raii::DeviceMemory colorImageMemory = nullptr;
   vk::raii::ImageView colorImageView = nullptr;
 
+  std::vector<vk::raii::Buffer> computeStorageBuffers;
+  std::vector<vk::raii::DeviceMemory> computeStorageBuffersMemory;
+
   bool framebufferResized = false;
 
   void initWindow()
@@ -240,7 +258,7 @@ private:
     createSwapChain();
     createImageViews();
     createDescriptorSetLayout();
-    createGraphicsPipeline();
+    createPipelines();
     createCommandPool();
     createColorResources();
     createDepthResources();
@@ -248,6 +266,7 @@ private:
     createTextureImageView();
     createTextureSampler();
     loadModel();
+    createComputeStorageBuffers();
     createVertexBuffer();
     createIndexBuffer();
     createUniformBuffers();
@@ -407,12 +426,17 @@ private:
                                                          vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
     bool supportsRequiredFeatures = features.template get<vk::PhysicalDeviceFeatures2>().features.samplerAnisotropy &&
                                     features.template get<vk::PhysicalDeviceFeatures2>().features.sampleRateShading &&
+                                    features.template get<vk::PhysicalDeviceFeatures2>().features.vertexPipelineStoresAndAtomics &&
                                     features.template get<vk::PhysicalDeviceVulkan11Features>().shaderDrawParameters &&
                                     features.template get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering &&
                                     features.template get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState;
 
+    auto properties = physicalDevice.template getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceExtendedDynamicState3PropertiesEXT>();
+
+    bool supportsRequiredProperties = properties.template get<vk::PhysicalDeviceExtendedDynamicState3PropertiesEXT>().dynamicPrimitiveTopologyUnrestricted;
+
     // Return true if the physicalDevice meets all the criteria
-    return supportsVulkan1_3 && supportsGraphics && supportsAllRequiredExtensions && supportsRequiredFeatures;
+    return supportsVulkan1_3 && supportsGraphics && supportsAllRequiredExtensions && supportsRequiredFeatures && supportsRequiredProperties;
   }
 
   void pickPhysicalDevice()
@@ -440,6 +464,7 @@ private:
     {
       if (
           (queueFamilyProperties[qfpIndex].queueFlags & vk::QueueFlagBits::eGraphics) &&
+          (queueFamilyProperties[qfpIndex].queueFlags & vk::QueueFlagBits::eCompute) &&
           physicalDevice.getSurfaceSupportKHR(qfpIndex, *surface))
       {
         queueIndex = qfpIndex;
@@ -460,6 +485,7 @@ private:
             {.features = {
                  .sampleRateShading = true,
                  .samplerAnisotropy = true,
+                 .vertexPipelineStoresAndAtomics = true,
              }},
             {.shaderDrawParameters = true},
             {.synchronization2 = true, .dynamicRendering = true},
@@ -594,7 +620,7 @@ private:
     return shaderModule;
   }
 
-  void createGraphicsPipeline()
+  void createPipelines()
   {
     auto shaderCode = readFile("slang.spv");
     vk::raii::ShaderModule shaderModule = createShaderModule(shaderCode);
@@ -627,7 +653,7 @@ private:
         .topology = vk::PrimitiveTopology::eTriangleList,
     };
 
-    std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+    std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor, vk::DynamicState::ePrimitiveTopology};
     vk::PipelineDynamicStateCreateInfo dynamicState{
         .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
         .pDynamicStates = dynamicStates.data(),
@@ -666,10 +692,17 @@ private:
         .pAttachments = &colorBlendAttachment,
     };
 
+    vk::PushConstantRange pushRange{
+        .stageFlags = vk::ShaderStageFlagBits::eVertex,
+        .offset = 0,
+        .size = sizeof(uint32_t),
+    };
+
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
         .setLayoutCount = 1,
         .pSetLayouts = &*descriptorSetLayout,
-        .pushConstantRangeCount = 0,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &pushRange,
     };
 
     pipelineLayout = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
@@ -706,6 +739,19 @@ private:
         };
 
     graphicsPipeline = vk::raii::Pipeline(device, nullptr, pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
+
+    vk::PipelineShaderStageCreateInfo computeShaderStageInfo{
+        .stage = vk::ShaderStageFlagBits::eCompute,
+        .module = shaderModule,
+        .pName = "compMain",
+    };
+
+    vk::ComputePipelineCreateInfo computePipelineInfo{
+        .stage = computeShaderStageInfo,
+        .layout = pipelineLayout,
+    };
+
+    computePipeline = vk::raii::Pipeline(device, nullptr, computePipelineInfo);
   };
 
   void createCommandPool()
@@ -732,6 +778,26 @@ private:
   void recordCommandBuffer(uint32_t imageIndex)
   {
     commandBuffers[frameIndex].begin({});
+
+    commandBuffers[frameIndex].bindPipeline(vk::PipelineBindPoint::eCompute, *computePipeline);
+    commandBuffers[frameIndex].bindDescriptorSets(vk::PipelineBindPoint::eCompute, pipelineLayout, 0, *descriptorSets[frameIndex], nullptr);
+    commandBuffers[frameIndex].dispatch(PARTICLE_COUNT / 256, 1, 1);
+
+    vk::MemoryBarrier2 computeToGraphicsBarrier{
+        .srcStageMask = vk::PipelineStageFlagBits2::eComputeShader,
+        .srcAccessMask = vk::AccessFlagBits2::eShaderWrite,
+        .dstStageMask = vk::PipelineStageFlagBits2::eVertexShader,
+        .dstAccessMask = vk::AccessFlagBits2::eShaderRead,
+    };
+
+    vk::DependencyInfo dependencyInfo{
+        .memoryBarrierCount = 1,
+        .pMemoryBarriers = &computeToGraphicsBarrier,
+    };
+
+    commandBuffers[frameIndex].pipelineBarrier2(dependencyInfo);
+
+    commandBuffers[frameIndex].pushConstants<uint32_t>(pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, (uint32_t)0);
 
     transition_image_layout(
         swapChainImages[imageIndex],
@@ -811,7 +877,13 @@ private:
 
     commandBuffers[frameIndex].setViewport(0, viewport);
     commandBuffers[frameIndex].setScissor(0, scissor);
+    commandBuffers[frameIndex].setPrimitiveTopology(vk::PrimitiveTopology::eTriangleList);
     commandBuffers[frameIndex].drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+    commandBuffers[frameIndex].pushConstants<uint32_t>(pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, (uint32_t)1);
+    commandBuffers[frameIndex].setPrimitiveTopology(vk::PrimitiveTopology::ePointList);
+    commandBuffers[frameIndex].draw(PARTICLE_COUNT, 1, 0, 0);
+
     commandBuffers[frameIndex].endRendering();
 
     transition_image_layout(
@@ -1062,12 +1134,12 @@ private:
 
   void createDescriptorSetLayout()
   {
-    std::array<vk::DescriptorSetLayoutBinding, 2> bindings{{
+    std::array<vk::DescriptorSetLayoutBinding, 4> bindings{{
         {
             .binding = 0,
             .descriptorType = vk::DescriptorType::eUniformBuffer,
             .descriptorCount = 1,
-            .stageFlags = vk::ShaderStageFlagBits::eVertex,
+            .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eCompute,
         },
         {
             .binding = 1,
@@ -1075,7 +1147,20 @@ private:
             .descriptorCount = 1,
             .stageFlags = vk::ShaderStageFlagBits::eFragment,
         },
+        {
+            .binding = 2,
+            .descriptorType = vk::DescriptorType::eStorageBuffer,
+            .descriptorCount = 1,
+            .stageFlags = vk::ShaderStageFlagBits::eCompute,
+        },
+        {
+            .binding = 3,
+            .descriptorType = vk::DescriptorType::eStorageBuffer,
+            .descriptorCount = 1,
+            .stageFlags = vk::ShaderStageFlagBits::eCompute | vk::ShaderStageFlagBits::eVertex,
+        },
     }};
+
     vk::DescriptorSetLayoutCreateInfo layoutInfo{
         .bindingCount = static_cast<uint32_t>(bindings.size()),
         .pBindings = bindings.data(),
@@ -1099,9 +1184,13 @@ private:
   void updateUniformBuffer(uint32_t currentImage)
   {
     static auto startTime = std::chrono::high_resolution_clock::now();
+    static auto lastTime = startTime;
 
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+    float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - lastTime).count();
+
+    lastTime = currentTime;
 
     UniformBufferObject ubo{};
 
@@ -1109,13 +1198,14 @@ private:
     ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.proj = glm::perspective(glm::radians(45.0f), static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height), 0.1f, 10.0f);
     ubo.proj[1][1] *= -1;
+    ubo.deltaTime = deltaTime * 1000;
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
   }
 
   void createDescriptorPool()
   {
-    std::array<vk::DescriptorPoolSize, 2> poolSize{{
+    std::array<vk::DescriptorPoolSize, 3> poolSize{{
         {
             .type = vk::DescriptorType::eUniformBuffer,
             .descriptorCount = MAX_FRAMES_IN_FLIGHT,
@@ -1123,6 +1213,10 @@ private:
         {
             .type = vk::DescriptorType::eCombinedImageSampler,
             .descriptorCount = MAX_FRAMES_IN_FLIGHT,
+        },
+        {
+            .type = vk::DescriptorType::eStorageBuffer,
+            .descriptorCount = MAX_FRAMES_IN_FLIGHT * 2,
         },
     }};
     vk::DescriptorPoolCreateInfo poolInfo{
@@ -1158,7 +1252,17 @@ private:
           .imageView = textureImageView,
           .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
       };
-      std::array<vk::WriteDescriptorSet, 2> descriptorWrite{{
+      vk::DescriptorBufferInfo computeBufferInfoLastFrame{
+          .buffer = computeStorageBuffers[(i + MAX_FRAMES_IN_FLIGHT - 1) % MAX_FRAMES_IN_FLIGHT],
+          .offset = 0,
+          .range = sizeof(Particle) * PARTICLE_COUNT,
+      };
+      vk::DescriptorBufferInfo computeBufferInfoCurrentFrame{
+          .buffer = computeStorageBuffers[i],
+          .offset = 0,
+          .range = sizeof(Particle) * PARTICLE_COUNT,
+      };
+      std::array<vk::WriteDescriptorSet, 4> descriptorWrite{{
           {
               .dstSet = descriptorSets[i],
               .dstBinding = 0,
@@ -1174,6 +1278,22 @@ private:
               .descriptorCount = 1,
               .descriptorType = vk::DescriptorType::eCombinedImageSampler,
               .pImageInfo = &imageInfo,
+          },
+          {
+              .dstSet = descriptorSets[i],
+              .dstBinding = 2,
+              .dstArrayElement = 0,
+              .descriptorCount = 1,
+              .descriptorType = vk::DescriptorType::eStorageBuffer,
+              .pBufferInfo = &computeBufferInfoLastFrame,
+          },
+          {
+              .dstSet = descriptorSets[i],
+              .dstBinding = 3,
+              .dstArrayElement = 0,
+              .descriptorCount = 1,
+              .descriptorType = vk::DescriptorType::eStorageBuffer,
+              .pBufferInfo = &computeBufferInfoCurrentFrame,
           },
       }};
 
@@ -1541,6 +1661,43 @@ private:
 
     std::tie(colorImage, colorImageMemory) = createImage(swapChainExtent.width, swapChainExtent.height, 1, msaaSamples, colorFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
     colorImageView = createImageView(colorImage, colorFormat, vk::ImageAspectFlagBits::eColor, 1);
+  }
+
+  void createComputeStorageBuffers()
+  {
+    computeStorageBuffers.clear();
+    computeStorageBuffersMemory.clear();
+
+    std::default_random_engine rndEngine((unsigned)time(nullptr));
+    std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
+
+    std::vector<Particle> particles(PARTICLE_COUNT);
+    for (auto &particle : particles)
+    {
+      float r = 0.25f * sqrtf(rndDist(rndEngine));
+      float theta = rndDist(rndEngine) * 2.0f * glm::pi<float>();
+      float x = r * cosf(theta) * HEIGHT / WIDTH;
+      float y = r * sinf(theta);
+      particle.pos = glm::vec2(x, y);
+      particle.vel = normalize(glm::vec2(x, y)) * 0.00025f;
+      particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine), 1.0f);
+    }
+
+    vk::DeviceSize bufferSize = sizeof(Particle) * PARTICLE_COUNT;
+
+    auto [stagingBuffer, stagingBufferMemory] = createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+    void *stagingData = stagingBufferMemory.mapMemory(0, bufferSize);
+    memcpy(stagingData, particles.data(), bufferSize);
+    stagingBufferMemory.unmapMemory();
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+      auto [computeStorageBufferTemp, computeStorageBufferTempMemory] = createBuffer(bufferSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal);
+      copyBuffer(stagingBuffer, computeStorageBufferTemp, bufferSize);
+      computeStorageBuffers.emplace_back(std::move(computeStorageBufferTemp));
+      computeStorageBuffersMemory.emplace_back(std::move(computeStorageBufferTempMemory));
+    }
   }
 };
 
