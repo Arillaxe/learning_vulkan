@@ -33,11 +33,10 @@ import vulkan_hpp;
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
+#define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <tiny_gltf.h>
 
 constexpr int PARTICLE_COUNT = 4096;
 
@@ -108,8 +107,8 @@ struct UniformBufferObject
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
-const std::string MODEL_PATH = "models/viking_room.obj";
-const std::string TEXTURE_PATH = "textures/viking_room.png";
+const std::string MODEL_PATH = "models/robot.gltf";
+const std::string TEXTURE_PATH = "models/textures/Robot_diffuse.jpeg";
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -882,7 +881,7 @@ private:
 
     commandBuffers[frameIndex].pushConstants<uint32_t>(pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, (uint32_t)1);
     commandBuffers[frameIndex].setPrimitiveTopology(vk::PrimitiveTopology::ePointList);
-    commandBuffers[frameIndex].draw(PARTICLE_COUNT, 1, 0, 0);
+    // commandBuffers[frameIndex].draw(PARTICLE_COUNT, 1, 0, 0);
 
     commandBuffers[frameIndex].endRendering();
 
@@ -1194,9 +1193,12 @@ private:
 
     UniformBufferObject ubo{};
 
-    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.proj = glm::perspective(glm::radians(45.0f), static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height), 0.1f, 10.0f);
+    ubo.model = glm::mat4(1.0f);
+
+    ubo.model = glm::rotate(ubo.model, time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.model = glm::scale(ubo.model, glm::vec3(0.05f));
+    ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, -50.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.proj = glm::perspective(glm::radians(45.0f), static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height), 0.1f, 100.0f);
     ubo.proj[1][1] *= -1;
     ubo.deltaTime = deltaTime * 1000;
 
@@ -1512,43 +1514,105 @@ private:
 
   void loadModel()
   {
-    tinyobj::attrib_t attrib;
-    std::vector<tinyobj::shape_t> shapes;
-    std::vector<tinyobj::material_t> materials;
-    std::string warn, err;
+    tinygltf::Model model;
+    tinygltf::TinyGLTF loader;
+    std::string err;
+    std::string warn;
 
-    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str()))
+    bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, MODEL_PATH);
+
+    if (!warn.empty())
     {
-      throw std::runtime_error(warn + err);
+      std::cout << "glTF warning: " << warn << std::endl;
     }
 
-    std::unordered_map<Vertex, uint32_t> uniqueVertices{};
-
-    for (const auto &shape : shapes)
+    if (!err.empty())
     {
-      for (const auto &index : shape.mesh.indices)
+      std::cout << "glTF error: " << err << std::endl;
+    }
+
+    if (!ret)
+    {
+      throw std::runtime_error("Failed to load glTF model");
+    }
+
+    vertices.clear();
+    indices.clear();
+
+    for (const auto &mesh : model.meshes)
+    {
+      for (const auto &primitive : mesh.primitives)
       {
-        Vertex vertex{};
+        const tinygltf::Accessor &indexAccessor = model.accessors[primitive.indices];
+        const tinygltf::BufferView &indexBufferView = model.bufferViews[indexAccessor.bufferView];
+        const tinygltf::Buffer &indexBuffer = model.buffers[indexBufferView.buffer];
 
-        vertex.pos = {
-            attrib.vertices[3 * index.vertex_index + 0],
-            attrib.vertices[3 * index.vertex_index + 1],
-            attrib.vertices[3 * index.vertex_index + 2],
-        };
+        const tinygltf::Accessor &posAccessor = model.accessors[primitive.attributes.at("POSITION")];
+        const tinygltf::BufferView &posBufferView = model.bufferViews[posAccessor.bufferView];
+        const tinygltf::Buffer &posBuffer = model.buffers[posBufferView.buffer];
 
-        vertex.texCoord = {
-            attrib.texcoords[2 * index.texcoord_index + 0],
-            1.0f - attrib.texcoords[2 * index.texcoord_index + 1],
-        };
+        bool hasTexCoords = primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end();
+        const tinygltf::Accessor *texCoordAccessor = nullptr;
+        const tinygltf::BufferView *texCoordBufferView = nullptr;
+        const tinygltf::Buffer *texCoordBuffer = nullptr;
 
-        auto [it, inserted] = uniqueVertices.insert({vertex, static_cast<uint32_t>(vertices.size())});
-
-        if (inserted)
+        if (hasTexCoords)
         {
+          texCoordAccessor = &model.accessors[primitive.attributes.at("TEXCOORD_0")];
+          texCoordBufferView = &model.bufferViews[texCoordAccessor->bufferView];
+          texCoordBuffer = &model.buffers[texCoordBufferView->buffer];
+        }
+
+        uint32_t baseVertex = static_cast<uint32_t>(vertices.size());
+
+        for (size_t i = 0; i < posAccessor.count; i++)
+        {
+          Vertex vertex{};
+
+          const float *pos = reinterpret_cast<const float *>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset + i * 12]);
+          vertex.pos = {pos[0], pos[1], pos[2]};
+
+          if (hasTexCoords)
+          {
+            const float *texCoord = reinterpret_cast<const float *>(&texCoordBuffer->data[texCoordBufferView->byteOffset + texCoordAccessor->byteOffset + i * 8]);
+            vertex.texCoord = {texCoord[0], texCoord[1]};
+          }
+          else
+          {
+            vertex.texCoord = {0.0f, 0.0f};
+          }
+
           vertices.push_back(vertex);
         }
 
-        indices.push_back(it->second);
+        const unsigned char *indexData = &indexBuffer.data[indexBufferView.byteOffset + indexAccessor.byteOffset];
+        size_t indexCount = indexAccessor.count;
+
+        indices.reserve(indices.size() + indexCount);
+
+        for (size_t i = 0; i < indexCount; i++)
+        {
+          uint32_t index = 0;
+
+          switch (indexAccessor.componentType)
+          {
+          case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+            index = *reinterpret_cast<const uint16_t *>(indexData + i * sizeof(uint16_t));
+            break;
+          case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+            index = *reinterpret_cast<const uint32_t *>(indexData + i * sizeof(uint32_t));
+            break;
+          case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+            index = *reinterpret_cast<const uint8_t *>(indexData + i * sizeof(uint8_t));
+            break;
+
+          default:
+            throw std::runtime_error("Unsupported index component type");
+            break;
+          }
+
+          indices.push_back(baseVertex + index);
+        }
       }
     }
   }
