@@ -6,7 +6,8 @@
           "includePath": [
               "${VULKAN_SDK}/Include",
               "${GLFW_PATH}/include",
-              "${workspaceFolder}/include"
+              "${workspaceFolder}/include",
+            "${workspaceFolder}/src"
           ],
           "intelliSenseMode": "${default}",
           "compilerPath": "${COMPILER_PATH}/g++.exe",

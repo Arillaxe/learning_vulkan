@@ -881,7 +881,7 @@ private:
 
     commandBuffers[frameIndex].pushConstants<uint32_t>(pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, (uint32_t)1);
     commandBuffers[frameIndex].setPrimitiveTopology(vk::PrimitiveTopology::ePointList);
-    // commandBuffers[frameIndex].draw(PARTICLE_COUNT, 1, 0, 0);
+    commandBuffers[frameIndex].draw(PARTICLE_COUNT, 1, 0, 0);
 
     commandBuffers[frameIndex].endRendering();
 
