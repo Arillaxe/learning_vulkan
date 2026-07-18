@@ -1,7 +1,7 @@
 #ifndef RENDER_PASS_HPP
 #define RENDER_PASS_HPP
 
-#include <vulkan/vulkan_raii.hpp>
+#include <vk.hpp>
 
 class RenderTarget;
 
@@ -60,6 +60,9 @@ public:
   }
 
 protected:
+  vk::raii::PipelineLayout pipelineLayout = nullptr;
+  vk::raii::Pipeline pipeline = nullptr;
+  vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
   // With dynamic rendering, BeginPass typically calls vkCmdBeginRendering
   // instead of vkCmdBeginRenderPass
   virtual void BeginPass(vk::raii::CommandBuffer &commandBuffer) = 0;
@@ -67,6 +70,7 @@ protected:
   // With dynamic rendering, EndPass typically calls vkCmdEndRendering
   // instead of vkCmdEndRenderPass
   virtual void EndPass(vk::raii::CommandBuffer &commandBuffer) = 0;
+  virtual void CreatePipeline() = 0;
 };
 
 #endif // RENDER_PASS_HPP

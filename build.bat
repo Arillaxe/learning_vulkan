@@ -6,6 +6,6 @@ set defines=-D DEBUG
 
 echo "Building main..."
 
-g++ -std=c++20 %includes% %defines% src/main.cpp %links% -o main.exe
+g++ -std=c++20 %includes% %defines% src/main_new.cpp %links% -o main.exe
 
 echo "Build finished!"

@@ -54,6 +54,16 @@ public:
     }
   }
 
+  vk::raii::Buffer &getVertextBuffer()
+  {
+    return vertexBuffer;
+  }
+
+  vk::raii::Buffer &getIndexBuffer()
+  {
+    return indexBuffer;
+  }
+
 private:
   bool loadMeshData(std::string &filePath, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices)
   {

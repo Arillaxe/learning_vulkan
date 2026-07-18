@@ -1,7 +1,7 @@
 #ifndef RENDER_TARGET_HPP
 #define RENDER_TARGET_HPP
 
-#include <vulkan/vulkan_raii.hpp>
+#include <vk.hpp>
 
 class RenderTarget
 {

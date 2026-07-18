@@ -4,8 +4,9 @@
 #include <component.hpp>
 #include <transform_component.hpp>
 #include <entity.hpp>
+#include <buffer.hpp>
+#include <mesh_resource.hpp>
 
-class Mesh;
 class Material;
 
 class MeshComponent : public Component

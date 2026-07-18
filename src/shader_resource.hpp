@@ -2,7 +2,7 @@
 #define SHADER_RESOURCE_HPP
 
 #include <resource.hpp>
-#include <vulkan/vulkan_raii.hpp>
+#include <vk.hpp>
 #include <utils.hpp>
 
 class Shader : public Resource

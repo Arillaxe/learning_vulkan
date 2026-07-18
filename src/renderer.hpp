@@ -1,13 +1,16 @@
 #ifndef RENDERER_HPP
 #define RENDERER_HPP
 
-#include <vulkan/vulkan_raii.hpp>
+#include <vk.hpp>
 #include <render_pass_manager.hpp>
 #include <culling_system.hpp>
 #include <camera.hpp>
 #include <geomerty_pass.hpp>
 #include <lighting_pass.hpp>
 #include <post_process_pass.hpp>
+#include <vk_init.hpp>
+
+constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 class Renderer
 {
@@ -16,20 +19,26 @@ private:
   vk::Queue graphicsQueue;
   vk::raii::CommandPool commandPool = nullptr;
 
+  vk::raii::CommandBuffer commandBuffer = nullptr;
+
+  std::vector<vk::raii::Semaphore> presentCompleteSemaphores;
+  std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
+  std::vector<vk::raii::Fence> drawFences;
+
+  uint32_t frameIndex = 0;
+
   RenderPassManager renderPassManager;
   CullingSystem cullingSystem;
 
-  // Current frame resources
-  vk::raii::CommandBuffer commandBuffer = nullptr;
-  vk::raii::Fence fence = nullptr;
-  vk::raii::Semaphore imageAvailableSemaphore = nullptr;
-  vk::raii::Semaphore renderFinishedSemaphore = nullptr;
-
 public:
-  Renderer(vk::raii::Device &dev, vk::Queue queue) : device(dev), graphicsQueue(queue)
+  Renderer(VkInit &vkInit) : device(vkInit.getDevice()), graphicsQueue(vkInit.getGraphicsQueue())
   {
-    // Create command pool
-    // ...
+    vk::CommandPoolCreateInfo poolInfo{
+        .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+        .queueFamilyIndex = vkInit.getGraphicsQueueFamilyIndex(),
+    };
+
+    commandPool = vk::raii::CommandPool(device, poolInfo);
 
     // Create synchronization objects
     // ...
@@ -90,6 +99,8 @@ public:
     // With vk::raii, we need to dereference the fence
     vk::Fence rawFence = *fence;
     graphicsQueue.submit(1, &submitInfo, rawFence);
+
+    frameIndex = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
   }
 
 private:
