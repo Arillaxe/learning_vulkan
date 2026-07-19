@@ -5,10 +5,6 @@
 #include <core/window.hpp>
 #include <ranges>
 #include <iostream>
-#include <renderer/vk/vk_resource.hpp>
-#include <renderer/vk/vk_swapchain.hpp>
-#include <renderer/vk/vk_command.hpp>
-#include <renderer/vk/vk_synchronization.hpp>
 
 const std::vector<char const *> validationLayers = {
     "VK_LAYER_KHRONOS_validation",
@@ -33,13 +29,9 @@ private:
   vk::raii::Device device;
   vk::raii::Queue queue;
 
-  VkResource vkResource;
-  VkSwapchain vkSwapchain;
-  VkCommand vkCommand;
-  VkSynchronization vkSynchronization;
-
   vk::raii::Instance createInstance()
   {
+    std::runtime_error("Yo");
     constexpr vk::ApplicationInfo appInfo{
         .pApplicationName = "Hello Triangle",
         .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
@@ -279,11 +271,7 @@ public:
         physicalDevice(pickPhysicalDevice()),
         queueIndex(pickQueueFamilyIndex()),
         device(createDevice()),
-        queue(createQueue()),
-        vkResource(*this),
-        vkSwapchain(*this, win),
-        vkCommand(*this),
-        vkSynchronization(*this) {}
+        queue(createQueue()) {}
 
   vk::raii::SurfaceKHR &getSurface()
   {
@@ -300,34 +288,14 @@ public:
     return device;
   }
 
-  VkResource &getVkResource()
-  {
-    return vkResource;
-  }
-
-  VkSwapchain &getVkSwapchain()
-  {
-    return vkSwapchain;
-  }
-
   uint32_t getQueueFamilyIndex()
   {
     return queueIndex;
   }
 
-  VkCommand &getVkCommand()
-  {
-    return vkCommand;
-  }
-
   vk::raii::Queue &getQueue()
   {
     return queue;
-  }
-
-  VkSynchronization &getVkSynchronization()
-  {
-    return vkSynchronization;
   }
 };
 

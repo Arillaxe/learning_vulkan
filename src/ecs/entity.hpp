@@ -78,7 +78,7 @@ public:
   template <typename T>
   T *getComponent()
   {
-    size_t = typeID = Component::getTypeID<T>();
+    size_t typeID = Component::getTypeID<T>();
     auto it = componentMap.find(typeID);
 
     if (it != componentMap.end())

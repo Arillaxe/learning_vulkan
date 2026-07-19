@@ -8,11 +8,12 @@
 
 #include <renderer/vk/vk_context.hpp>
 #include <renderer/vertex.hpp>
+#include <renderer/vk/vk_resource.hpp>
 
 class Mesh
 {
 private:
-  VkContext &vkContext;
+  VkResource &vkResource;
   tinygltf::Model model;
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
@@ -155,41 +156,41 @@ private:
   {
     vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
-    auto stagingBuffer = vkContext.getVkResource().createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
-    auto stagingBufferMemory = vkContext.getVkResource().getBufferMemory(stagingBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+    auto stagingBuffer = vkResource.createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
+    auto stagingBufferMemory = vkResource.getBufferMemory(stagingBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
     void *dataStaging = stagingBufferMemory.mapMemory(0, bufferSize);
 
     memcpy(dataStaging, vertices.data(), bufferSize);
 
     stagingBufferMemory.unmapMemory();
 
-    vertexBuffer = vkContext.getVkResource().createBuffer(bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
-    vertexBufferMemory = vkContext.getVkResource().getBufferMemory(vertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    vertexBuffer = vkResource.createBuffer(bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+    vertexBufferMemory = vkResource.getBufferMemory(vertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-    vkContext.getVkResource().copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+    vkResource.copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
   }
 
   void createIndexBuffer()
   {
     vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
-    auto stagingBuffer = vkContext.getVkResource().createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
-    auto stagingBufferMemory = vkContext.getVkResource().getBufferMemory(stagingBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+    auto stagingBuffer = vkResource.createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
+    auto stagingBufferMemory = vkResource.getBufferMemory(stagingBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
     void *dataStaging = stagingBufferMemory.mapMemory(0, bufferSize);
 
     memcpy(dataStaging, indices.data(), bufferSize);
 
     stagingBufferMemory.unmapMemory();
 
-    indexBuffer = vkContext.getVkResource().createBuffer(bufferSize, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst);
-    indexBufferMemory = vkContext.getVkResource().getBufferMemory(indexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    indexBuffer = vkResource.createBuffer(bufferSize, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+    indexBufferMemory = vkResource.getBufferMemory(indexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-    vkContext.getVkResource().copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+    vkResource.copyBuffer(stagingBuffer, indexBuffer, bufferSize);
   }
 
 public:
-  Mesh(VkContext &context, const std::string &filename)
-      : vkContext(context),
+  Mesh(VkResource &resource, const std::string &filename)
+      : vkResource(resource),
         model(loadModel(filename)),
         vertices(getVerticies()),
         indices(getIndices())

@@ -7,14 +7,14 @@ class Material
 {
 private:
   VkContext &vkContext;
-  VkPipeline pipeline;
+  Vk_Pipeline pipeline;
 
 public:
   Material(VkContext &context, const std::string &shaderFilename)
       : vkContext(context),
         pipeline(context, shaderFilename) {}
 
-  VkPipeline &getPipeline()
+  Vk_Pipeline &getPipeline()
   {
     return pipeline;
   }

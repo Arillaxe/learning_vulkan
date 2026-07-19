@@ -5,18 +5,30 @@
 #include <core/window.hpp>
 #include <renderer/vk/vk_context.hpp>
 #include <algorithm>
+#include <renderer/vk/vk_resource.hpp>
+#include <renderer/vk/vk_synchronization.hpp>
 
 class VkSwapchain
 {
 private:
   Window &window;
   VkContext &vkContext;
+  VkResource &vkResource;
+  VkSynchronization &vkSynchronization;
   vk::SurfaceCapabilitiesKHR capabilities;
   vk::Extent2D extent;
   vk::SurfaceFormatKHR surfaceFormat;
   vk::raii::SwapchainKHR swapchain;
   std::vector<vk::Image> images;
   std::vector<vk::raii::ImageView> imageViews;
+
+  vk::raii::Image depthImage;
+  vk::raii::DeviceMemory depthImageMemory;
+  vk::raii::ImageView depthImageView;
+
+  vk::raii::Image colorImage;
+  vk::raii::DeviceMemory colorImageMemory;
+  vk::raii::ImageView colorImageView;
 
   vk::SurfaceCapabilitiesKHR getCapabilities()
   {
@@ -106,7 +118,7 @@ private:
     for (auto &image : images)
     {
       imageViews.emplace_back(
-          vkContext.getVkResource().createImageView(
+          vkResource.createImageView(
               image,
               surfaceFormat.format,
               vk::ImageAspectFlagBits::eColor,
@@ -116,16 +128,49 @@ private:
     return imageViews;
   }
 
+  vk::Format findDepthFormat()
+  {
+    return findSupportedFormat(
+        {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+        vk::ImageTiling::eOptimal,
+        vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+  }
+
+  vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
+  {
+    for (const auto format : candidates)
+    {
+      vk::FormatProperties props = vkContext.getPhysicalDevice().getFormatProperties(format);
+
+      if (
+          (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) ||
+          (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features))
+      {
+        return format;
+      }
+    }
+
+    throw std::runtime_error("failed to find supported format!");
+  }
+
 public:
-  VkSwapchain(VkContext &context, Window &win)
+  VkSwapchain(VkContext &context, Window &win, VkResource &resource, VkSynchronization &synchronization)
       : vkContext(context),
+        vkResource(resource),
+        vkSynchronization(synchronization),
         window(win),
         capabilities(getCapabilities()),
         extent(getSwapExtent()),
         surfaceFormat(findSurfaceFormat()),
         swapchain(createSwapchain()),
         images(swapchain.getImages()),
-        imageViews(createImageViews()) {}
+        imageViews(createImageViews()),
+        depthImage(resource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e1, findDepthFormat(), vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment)),
+        depthImageMemory(resource.getImageMemory(depthImage, vk::MemoryPropertyFlagBits::eDeviceLocal)),
+        depthImageView(resource.createImageView(depthImage, findDepthFormat(), vk::ImageAspectFlagBits::eDepth, 1)),
+        colorImage(resource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e1, surfaceFormat.format, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment)),
+        colorImageMemory(resource.getImageMemory(colorImage, vk::MemoryPropertyFlagBits::eDeviceLocal)),
+        colorImageView(resource.createImageView(colorImage, surfaceFormat.format, vk::ImageAspectFlagBits::eColor, 1)) {}
 
   vk::SurfaceFormatKHR &getSurfaceFormat()
   {
@@ -149,11 +194,18 @@ public:
 
     swapchain = createSwapchain();
     imageViews = createImageViews();
+
+    depthImage = vkResource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e1, findDepthFormat(), vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment);
+    depthImageMemory = vkResource.getImageMemory(depthImage, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    depthImageView = vkResource.createImageView(depthImage, findDepthFormat(), vk::ImageAspectFlagBits::eDepth, 1);
+    colorImage = vkResource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e1, surfaceFormat.format, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment);
+    colorImageMemory = vkResource.getImageMemory(colorImage, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    colorImageView = vkResource.createImageView(colorImage, surfaceFormat.format, vk::ImageAspectFlagBits::eColor, 1);
   }
 
   uint32_t acquireNextImage()
   {
-    auto [result, imageIndex] = swapchain.acquireNextImage(UINT64_MAX, *vkContext.getVkSynchronization().getPresentCompleteSemaphore(), nullptr);
+    auto [result, imageIndex] = swapchain.acquireNextImage(UINT64_MAX, *vkSynchronization.getPresentCompleteSemaphore(), nullptr);
 
     if (result == vk::Result::eErrorOutOfDateKHR)
     {
@@ -180,6 +232,36 @@ public:
   vk::Extent2D &getExtent()
   {
     return extent;
+  }
+
+  std::vector<vk::Image> &getImages()
+  {
+    return images;
+  }
+
+  std::vector<vk::raii::ImageView> &getImageViews()
+  {
+    return imageViews;
+  }
+
+  vk::raii::Image &getDepthImage()
+  {
+    return depthImage;
+  }
+
+  vk::raii::ImageView &getColorImageView()
+  {
+    return colorImageView;
+  }
+
+  vk::raii::Image &getColorImage()
+  {
+    return colorImage;
+  }
+
+  vk::raii::ImageView &getDepthImageView()
+  {
+    return depthImageView;
   }
 };
 

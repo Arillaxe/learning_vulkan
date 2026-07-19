@@ -5,11 +5,14 @@
 #include <renderer/vk/vk_context.hpp>
 #include <renderer/vk/vk_shader.hpp>
 #include <renderer/vertex.hpp>
+#include <renderer/push.hpp>
+#include <renderer/vk/vk_swapchain.hpp>
 
-class VkPipeline
+class Vk_Pipeline
 {
 private:
   VkContext &vkContext;
+  VkSwapchain &vkSwapchain;
   VkShader shader;
   vk::raii::PipelineLayout pipelineLayout;
   vk::raii::Pipeline pipeline;
@@ -46,7 +49,7 @@ private:
     vk::PushConstantRange pushRange{
         .stageFlags = vk::ShaderStageFlagBits::eVertex,
         .offset = 0,
-        .size = sizeof(uint32_t),
+        .size = sizeof(PushConstants),
     };
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
@@ -155,7 +158,7 @@ private:
                 .renderPass = nullptr,
             },
             {.colorAttachmentCount = 1,
-             .pColorAttachmentFormats = &vkContext.getVkSwapchain().getSurfaceFormat().format,
+             .pColorAttachmentFormats = &vkSwapchain.getSurfaceFormat().format,
              .depthAttachmentFormat = findDepthFormat()},
         };
 
@@ -188,8 +191,9 @@ private:
   }
 
 public:
-  VkPipeline(VkContext &context, const std::string &shaderFilename)
+  Vk_Pipeline(VkContext &context, VkSwapchain &swapchain, const std::string &shaderFilename)
       : vkContext(context),
+        vkSwapchain(swapchain),
         shader(context, shaderFilename),
         pipelineLayout(createPipelineLayout()),
         pipeline(createPipeline()) {}

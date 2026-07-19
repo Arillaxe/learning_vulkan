@@ -13,7 +13,7 @@ public:
 
   void addEntity(Entity &&entity)
   {
-    entities.push_back(entity);
+    entities.push_back(std::move(entity));
   }
 
   std::vector<Entity> &getEntities()

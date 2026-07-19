@@ -4,7 +4,6 @@
 #include <ecs/component.hpp>
 #include <ecs/components/transform_component.hpp>
 #include <ecs/entity.hpp>
-#include <buffer.hpp>
 #include <core/mesh.hpp>
 #include <core/material.hpp>
 
