@@ -5,27 +5,19 @@
 #include <ecs/components/transform_component.hpp>
 #include <ecs/entity.hpp>
 #include <core/mesh.hpp>
-#include <core/material.hpp>
 
 class MeshComponent : public Component
 {
 private:
   Mesh &mesh;
-  Material &material;
 
 public:
-  MeshComponent(Mesh &_mesh, Material &mat)
-      : mesh(_mesh),
-        material(mat) {}
+  MeshComponent(Mesh &_mesh)
+      : mesh(_mesh) {}
 
   Mesh &getMesh()
   {
     return mesh;
-  }
-
-  Material &getMaterial()
-  {
-    return material;
   }
 };
 

@@ -12,6 +12,7 @@
 #include <renderer/vk/vk_synchronization.hpp>
 #include <ecs/components/mesh_component.hpp>
 #include <ecs/components/transform_component.hpp>
+#include <renderer/pipelines/main_pipeline.hpp>
 
 class Renderer
 {
@@ -23,80 +24,8 @@ private:
   VkSynchronization vkSynchronization;
   VkSwapchain vkSwapchain;
   Scene &scene;
-  VkUbo globalUbo;
-  vk::raii::DescriptorSetLayout descriptorSetLayout;
-  vk::raii::DescriptorPool descriptorPool;
-  vk::raii::DescriptorSet descriptorSet;
   vk::raii::CommandBuffers commandBuffers;
-
-  vk::raii::DescriptorSetLayout createDescriptorSetLayout()
-  {
-    std::array<vk::DescriptorSetLayoutBinding, 1> bindings{{
-        {
-            .binding = 0,
-            .descriptorType = vk::DescriptorType::eUniformBuffer,
-            .descriptorCount = 1,
-            .stageFlags = vk::ShaderStageFlagBits::eVertex,
-        },
-    }};
-
-    vk::DescriptorSetLayoutCreateInfo layoutInfo{
-        .bindingCount = static_cast<uint32_t>(bindings.size()),
-        .pBindings = bindings.data(),
-    };
-
-    return vk::raii::DescriptorSetLayout(vkContext.getDevice(), layoutInfo);
-  }
-
-  vk::raii::DescriptorPool createDescriptorPool()
-  {
-    std::array<vk::DescriptorPoolSize, 1> poolSize{{
-        {
-            .type = vk::DescriptorType::eUniformBuffer,
-            .descriptorCount = 1,
-        },
-    }};
-    vk::DescriptorPoolCreateInfo poolInfo{
-        .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-        .maxSets = 1,
-        .poolSizeCount = static_cast<uint32_t>(poolSize.size()),
-        .pPoolSizes = poolSize.data(),
-    };
-
-    return vk::raii::DescriptorPool(vkContext.getDevice(), poolInfo);
-  }
-
-  vk::raii::DescriptorSet createDescriptorSet()
-  {
-    vk::DescriptorSetAllocateInfo allocInfo{
-        .descriptorPool = descriptorPool,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &*descriptorSetLayout,
-    };
-
-    auto descriptorSet = std::move(vkContext.getDevice().allocateDescriptorSets(allocInfo).front());
-
-    vk::DescriptorBufferInfo bufferInfo{
-        .buffer = globalUbo.getUniformBuffer(),
-        .offset = 0,
-        .range = sizeof(UniformBufferObject),
-    };
-
-    std::array<vk::WriteDescriptorSet, 1> descriptorWrite{{
-        {
-            .dstSet = descriptorSet,
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = vk::DescriptorType::eUniformBuffer,
-            .pBufferInfo = &bufferInfo,
-        },
-    }};
-
-    vkContext.getDevice().updateDescriptorSets(descriptorWrite, {});
-
-    return descriptorSet;
-  }
+  MainPipeline mainPipeline;
 
   void transition_image_layout(
       vk::raii::CommandBuffer &commandBuffer,
@@ -147,11 +76,11 @@ public:
         vkSwapchain(vkContext, win, vkResource, vkSynchronization),
         scene(_scene),
         commandBuffers(vkCommand.createCommandBuffers(1)),
-        globalUbo(vkContext, vkResource, vkSwapchain),
-        descriptorSetLayout(createDescriptorSetLayout()),
-        descriptorPool(createDescriptorPool()),
-        descriptorSet(createDescriptorSet())
+        mainPipeline(vkContext, vkSwapchain, vkResource) {}
+
+  VkResource &getVkResource()
   {
+    return vkResource;
   }
 
   void render()
@@ -246,7 +175,8 @@ public:
     commandBuffer.setScissor(0, scissor);
     commandBuffer.setPrimitiveTopology(vk::PrimitiveTopology::eTriangleList);
 
-    // bind global descriptor set
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, mainPipeline.getPipeline());
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, mainPipeline.getPipelineLayout(), 0, *mainPipeline.getDescriptorSet(), nullptr);
 
     for (auto &entity : entities)
     {
@@ -258,8 +188,18 @@ public:
 
       if (!meshComponent || !transformComponent)
         continue;
-      // bind local descriptor set or push constants
-      // record
+
+      auto &mesh = meshComponent->getMesh();
+      auto &indices = mesh.getIndices();
+
+      commandBuffer.bindVertexBuffers(0, *mesh.getVertexBuffer(), {0});
+      commandBuffer.bindIndexBuffer(*mesh.getIndexBuffer(), 0, vk::IndexTypeValue<uint32_t>::value);
+      PushConstants pushConstants;
+
+      pushConstants.model = transformComponent->getTransformMatrix();
+
+      commandBuffer.pushConstants<PushConstants>(mainPipeline.getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, pushConstants);
+      commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
     }
 
     commandBuffer.endRendering();
@@ -279,7 +219,7 @@ public:
 
     vkContext.getDevice().waitIdle();
 
-    globalUbo.updateUniformBuffer();
+    mainPipeline.getVkUbo().updateUniformBuffer();
 
     vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
     const vk::SubmitInfo submitInfo{
@@ -314,6 +254,11 @@ public:
     {
       assert(result == vk::Result::eSuccess);
     }
+  }
+
+  void waitIdle()
+  {
+    vkContext.getDevice().waitIdle();
   }
 };
 

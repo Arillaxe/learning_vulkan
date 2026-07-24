@@ -10,6 +10,7 @@ class VkResource
 private:
   VkContext &vkContext;
   VkCommand &vkCommand;
+  vk::raii::DescriptorPool descriptorPool;
 
   uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
   {
@@ -29,10 +30,29 @@ private:
     throw std::runtime_error("failed to fuind suitable memory type!");
   }
 
+  vk::raii::DescriptorPool createDescriptorPool()
+  {
+    std::array<vk::DescriptorPoolSize, 1> poolSize{{
+        {
+            .type = vk::DescriptorType::eUniformBuffer,
+            .descriptorCount = 1,
+        },
+    }};
+    vk::DescriptorPoolCreateInfo poolInfo{
+        .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+        .maxSets = 1,
+        .poolSizeCount = static_cast<uint32_t>(poolSize.size()),
+        .pPoolSizes = poolSize.data(),
+    };
+
+    return vk::raii::DescriptorPool(vkContext.getDevice(), poolInfo);
+  }
+
 public:
   VkResource(VkContext &context, VkCommand &command)
       : vkContext(context),
-        vkCommand(command) {}
+        vkCommand(command),
+        descriptorPool(createDescriptorPool()) {}
 
   vk::raii::ImageView createImageView(vk::Image const &image, vk::Format format, vk::ImageAspectFlagBits aspectFlags, uint32_t mipLevels) const
   {
@@ -112,6 +132,11 @@ public:
     };
 
     return vk::raii::Image(vkContext.getDevice(), imageInfo);
+  }
+
+  vk::raii::DescriptorPool &getDescriptorPool()
+  {
+    return descriptorPool;
   }
 };
 

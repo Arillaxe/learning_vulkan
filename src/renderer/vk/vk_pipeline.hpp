@@ -10,12 +10,29 @@
 
 class Vk_Pipeline
 {
-private:
+protected:
   VkContext &vkContext;
   VkSwapchain &vkSwapchain;
+  VkResource &vkResource;
   VkShader shader;
-  vk::raii::PipelineLayout pipelineLayout;
-  vk::raii::Pipeline pipeline;
+  vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
+  vk::raii::PipelineLayout pipelineLayout = nullptr;
+  vk::raii::Pipeline pipeline = nullptr;
+  vk::raii::DescriptorSet descriptorSet = nullptr;
+  VkUbo vkUbo;
+
+  void initialize()
+  {
+    descriptorSetLayout = createDescriptorSetLayout();
+    pipelineLayout = createPipelineLayout();
+    pipeline = createPipeline();
+    descriptorSet = createDescriptorSet();
+  }
+
+  virtual vk::raii::PipelineLayout createPipelineLayout() = 0;
+  virtual vk::raii::Pipeline createPipeline() = 0;
+  virtual vk::raii::DescriptorSetLayout createDescriptorSetLayout() = 0;
+  virtual vk::raii::DescriptorSet createDescriptorSet() = 0;
 
   static vk::VertexInputBindingDescription getBindingDescription()
   {
@@ -44,127 +61,6 @@ private:
     }};
   }
 
-  vk::raii::PipelineLayout createPipelineLayout()
-  {
-    vk::PushConstantRange pushRange{
-        .stageFlags = vk::ShaderStageFlagBits::eVertex,
-        .offset = 0,
-        .size = sizeof(PushConstants),
-    };
-
-    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
-        .setLayoutCount = 1,
-        .pSetLayouts = &*shader.getDescriptorSetLayout(),
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &pushRange,
-    };
-
-    return vk::raii::PipelineLayout(vkContext.getDevice(), pipelineLayoutInfo);
-  }
-
-  vk::raii::Pipeline createPipeline()
-  {
-    vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
-        .stage = vk::ShaderStageFlagBits::eVertex,
-        .module = shader.getShaderModule(),
-        .pName = "vertMain",
-    };
-
-    vk::PipelineShaderStageCreateInfo fragShaderStageInfo{
-        .stage = vk::ShaderStageFlagBits::eFragment,
-        .module = shader.getShaderModule(),
-        .pName = "fragMain",
-    };
-
-    vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-
-    auto bindingDescription = getBindingDescription();
-    auto attributeDescriptions = getAttributeDescription();
-
-    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &bindingDescription,
-        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
-        .pVertexAttributeDescriptions = attributeDescriptions.data(),
-    };
-
-    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
-        .topology = vk::PrimitiveTopology::eTriangleList,
-    };
-
-    std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor, vk::DynamicState::ePrimitiveTopology};
-    vk::PipelineDynamicStateCreateInfo dynamicState{
-        .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
-        .pDynamicStates = dynamicStates.data(),
-    };
-
-    vk::PipelineViewportStateCreateInfo viewportState{
-        .viewportCount = 1,
-        .scissorCount = 1,
-    };
-
-    vk::PipelineRasterizationStateCreateInfo rasterizer{
-        .depthClampEnable = vk::False,
-        .rasterizerDiscardEnable = vk::False,
-        .polygonMode = vk::PolygonMode::eFill,
-        .cullMode = vk::CullModeFlagBits::eBack,
-        .frontFace = vk::FrontFace::eCounterClockwise,
-        .depthBiasEnable = vk::False,
-        .lineWidth = 1.0f,
-    };
-
-    vk::PipelineMultisampleStateCreateInfo multisampling{
-        .rasterizationSamples = vk::SampleCountFlagBits::e1,
-        .sampleShadingEnable = vk::True,
-        .minSampleShading = 0.2f,
-    };
-
-    vk::PipelineColorBlendAttachmentState colorBlendAttachment{
-        .blendEnable = vk::False,
-        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-    };
-
-    vk::PipelineColorBlendStateCreateInfo colorBlending{
-        .logicOpEnable = vk::False,
-        .logicOp = vk::LogicOp::eCopy,
-        .attachmentCount = 1,
-        .pAttachments = &colorBlendAttachment,
-    };
-
-    vk::PipelineDepthStencilStateCreateInfo depthStencil{
-        .depthTestEnable = vk::True,
-        .depthWriteEnable = vk::True,
-        .depthCompareOp = vk::CompareOp::eLess,
-        .depthBoundsTestEnable = vk::False,
-        .stencilTestEnable = vk::False,
-    };
-
-    vk::StructureChain<
-        vk::GraphicsPipelineCreateInfo,
-        vk::PipelineRenderingCreateInfo>
-        pipelineCreateInfoChain = {
-            {
-                .stageCount = 2,
-                .pStages = shaderStages,
-                .pVertexInputState = &vertexInputInfo,
-                .pInputAssemblyState = &inputAssembly,
-                .pViewportState = &viewportState,
-                .pRasterizationState = &rasterizer,
-                .pMultisampleState = &multisampling,
-                .pDepthStencilState = &depthStencil,
-                .pColorBlendState = &colorBlending,
-                .pDynamicState = &dynamicState,
-                .layout = pipelineLayout,
-                .renderPass = nullptr,
-            },
-            {.colorAttachmentCount = 1,
-             .pColorAttachmentFormats = &vkSwapchain.getSurfaceFormat().format,
-             .depthAttachmentFormat = findDepthFormat()},
-        };
-
-    return vk::raii::Pipeline(vkContext.getDevice(), nullptr, pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
-  }
-
   vk::Format findDepthFormat()
   {
     return findSupportedFormat(
@@ -191,12 +87,34 @@ private:
   }
 
 public:
-  Vk_Pipeline(VkContext &context, VkSwapchain &swapchain, const std::string &shaderFilename)
+  Vk_Pipeline(VkContext &context, VkSwapchain &swapchain, VkResource &resource, const std::string &shaderFilename)
       : vkContext(context),
         vkSwapchain(swapchain),
+        vkResource(resource),
         shader(context, shaderFilename),
-        pipelineLayout(createPipelineLayout()),
-        pipeline(createPipeline()) {}
+        vkUbo(vkContext, vkResource, vkSwapchain) {}
+
+  virtual ~Vk_Pipeline() = default;
+
+  VkUbo &getVkUbo()
+  {
+    return vkUbo;
+  }
+
+  vk::raii::Pipeline &getPipeline()
+  {
+    return pipeline;
+  }
+
+  vk::raii::PipelineLayout &getPipelineLayout()
+  {
+    return pipelineLayout;
+  }
+
+  vk::raii::DescriptorSet &getDescriptorSet()
+  {
+    return descriptorSet;
+  }
 };
 
 #endif // VK_PIPELINE_HPP

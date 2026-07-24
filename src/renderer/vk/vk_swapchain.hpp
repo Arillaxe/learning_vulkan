@@ -82,7 +82,7 @@ private:
                : vk::PresentModeKHR::eFifo;
   }
 
-  vk::raii::SwapchainKHR createSwapchain()
+  vk::raii::SwapchainKHR createSwapchain(const vk::SwapchainKHR &oldSwapchain)
   {
     auto minImageCount = std::max(3u, capabilities.minImageCount);
 
@@ -105,6 +105,8 @@ private:
         .presentMode = getPresentMode(),
         .clipped = true,
     };
+
+    swapChainCreateInfo.oldSwapchain = oldSwapchain;
 
     return vk::raii::SwapchainKHR(vkContext.getDevice(), swapChainCreateInfo);
   }
@@ -162,13 +164,13 @@ public:
         capabilities(getCapabilities()),
         extent(getSwapExtent()),
         surfaceFormat(findSurfaceFormat()),
-        swapchain(createSwapchain()),
+        swapchain(createSwapchain(VK_NULL_HANDLE)),
         images(swapchain.getImages()),
         imageViews(createImageViews()),
-        depthImage(resource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e1, findDepthFormat(), vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment)),
+        depthImage(resource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e4, findDepthFormat(), vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment)),
         depthImageMemory(resource.getImageMemory(depthImage, vk::MemoryPropertyFlagBits::eDeviceLocal)),
         depthImageView(resource.createImageView(depthImage, findDepthFormat(), vk::ImageAspectFlagBits::eDepth, 1)),
-        colorImage(resource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e1, surfaceFormat.format, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment)),
+        colorImage(resource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e4, surfaceFormat.format, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment)),
         colorImageMemory(resource.getImageMemory(colorImage, vk::MemoryPropertyFlagBits::eDeviceLocal)),
         colorImageView(resource.createImageView(colorImage, surfaceFormat.format, vk::ImageAspectFlagBits::eColor, 1)) {}
 
@@ -192,13 +194,20 @@ public:
 
     vkContext.getDevice().waitIdle();
 
-    swapchain = createSwapchain();
+    auto oldSwapchain = std::move(swapchain);
+
+    capabilities = getCapabilities();
+    surfaceFormat = findSurfaceFormat();
+    extent = getSwapExtent();
+
+    swapchain = createSwapchain(oldSwapchain);
+    imageViews.clear();
     imageViews = createImageViews();
 
-    depthImage = vkResource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e1, findDepthFormat(), vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment);
+    depthImage = vkResource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e4, findDepthFormat(), vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment);
     depthImageMemory = vkResource.getImageMemory(depthImage, vk::MemoryPropertyFlagBits::eDeviceLocal);
     depthImageView = vkResource.createImageView(depthImage, findDepthFormat(), vk::ImageAspectFlagBits::eDepth, 1);
-    colorImage = vkResource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e1, surfaceFormat.format, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment);
+    colorImage = vkResource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e4, surfaceFormat.format, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment);
     colorImageMemory = vkResource.getImageMemory(colorImage, vk::MemoryPropertyFlagBits::eDeviceLocal);
     colorImageView = vkResource.createImageView(colorImage, surfaceFormat.format, vk::ImageAspectFlagBits::eColor, 1);
   }

@@ -17,15 +17,21 @@ private:
   Scene scene;
   Renderer renderer;
 
+  Mesh robotMesh;
+
 public:
   App()
       : window(WIDTH, HEIGHT),
-        renderer(window, scene)
+        renderer(window, scene),
+        robotMesh(renderer.getVkResource(), "./models/robot.gltf")
   {
     Entity object("object");
 
     object.addComponent<TransformComponent>();
-    object.addComponent<MeshComponent>("./models/robot.gltf");
+    object.addComponent<MeshComponent>(robotMesh);
+
+    object.getComponent<TransformComponent>()->setPosition(glm::vec3(0.0f, 0.0f, 100.0f));
+    object.getComponent<TransformComponent>()->setScale(glm::vec3(0.5f));
 
     scene.addEntity(std::move(object));
   }
@@ -37,6 +43,8 @@ public:
       window.pollEvents();
       renderer.render();
     }
+
+    renderer.waitIdle();
   }
 };
 

@@ -50,8 +50,8 @@ public:
 
     UniformBufferObject ubo{};
 
-    ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, -50.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    ubo.projection = glm::perspective(glm::radians(45.0f), static_cast<float>(vkSwapchain.getExtent().width) / static_cast<float>(vkSwapchain.getExtent().height), 0.1f, 100.0f);
+    ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, -200.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.projection = glm::perspective(glm::radians(45.0f), static_cast<float>(vkSwapchain.getExtent().width) / static_cast<float>(vkSwapchain.getExtent().height), 0.1f, 1000.0f);
     ubo.projection[1][1] *= -1;
     ubo.deltaTime = deltaTime * 1000;
 

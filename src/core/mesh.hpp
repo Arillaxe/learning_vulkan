@@ -49,7 +49,7 @@ private:
     return model;
   }
 
-  std::vector<Vertex> getVerticies()
+  std::vector<Vertex> calcVerticies()
   {
     std::vector<Vertex> vertices;
 
@@ -102,11 +102,10 @@ private:
     return vertices;
   }
 
-  std::vector<uint32_t> getIndices()
+  std::vector<uint32_t> calcIndices()
   {
     std::vector<uint32_t> indices;
-
-    indices.clear();
+    uint32_t vertexOffset = 0;
 
     for (const auto &mesh : model.meshes)
     {
@@ -120,8 +119,6 @@ private:
         size_t indexCount = indexAccessor.count;
 
         indices.reserve(indices.size() + indexCount);
-
-        uint32_t baseVertex = static_cast<uint32_t>(vertices.size());
 
         for (size_t i = 0; i < indexCount; i++)
         {
@@ -144,8 +141,11 @@ private:
             break;
           }
 
-          indices.push_back(baseVertex + index);
+          indices.push_back(vertexOffset + index);
         }
+
+        const tinygltf::Accessor &posAccessor = model.accessors[primitive.attributes.at("POSITION")];
+        vertexOffset += static_cast<uint32_t>(posAccessor.count);
       }
     }
 
@@ -192,11 +192,26 @@ public:
   Mesh(VkResource &resource, const std::string &filename)
       : vkResource(resource),
         model(loadModel(filename)),
-        vertices(getVerticies()),
-        indices(getIndices())
+        vertices(calcVerticies()),
+        indices(calcIndices())
   {
     createVertexBuffer();
     createIndexBuffer();
+  }
+
+  vk::raii::Buffer &getVertexBuffer()
+  {
+    return vertexBuffer;
+  }
+
+  vk::raii::Buffer &getIndexBuffer()
+  {
+    return indexBuffer;
+  }
+
+  std::vector<uint32_t> &getIndices()
+  {
+    return indices;
   }
 };
 
