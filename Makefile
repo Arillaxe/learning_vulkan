@@ -27,10 +27,6 @@ PCH_GCH := $(PCH_HDR).gch
 rwildcard = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 SRCS := $(call rwildcard,src,*.cpp)
 
-# src/main.cpp is the legacy monolithic entry point (superseded by main_new.cpp).
-# It defines its own main() and third-party implementations, so exclude it.
-SRCS := $(filter-out src/main.cpp,$(SRCS))
-
 # src/renderer/vk/vk_context.cpp -> build/renderer.vk.vk_context.o
 obj_of = $(BUILD_DIR)/$(subst /,.,$(patsubst src/%.cpp,%,$1)).o
 OBJS := $(foreach s,$(SRCS),$(call obj_of,$s))
