@@ -23,6 +23,8 @@ defines="-DDEBUG"
 
 echo "Building main..."
 
+SECONDS=0
+
 g++ -std=c++20 \
     $includes \
     $defines \
@@ -30,4 +32,4 @@ g++ -std=c++20 \
     $links \
     -o main
 
-echo "Build complete."
+echo "Build complete in ${SECONDS} seconds."
