@@ -44,16 +44,38 @@ public:
       glfwSetWindowShouldClose(window.getGLFWWindowHandle(), true);
     }
 
+    glm::vec3 forward = camera.rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+    glm::vec3 right = camera.rotation * glm::vec3(1.0f, 0.0f, 0.0f);
+    glm::vec3 up = camera.rotation * glm::vec3(0.0f, 1.0f, 0.0f);
+
     if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_W) == GLFW_PRESS)
     {
-      glm::vec3 forward = camera.rotation * glm::vec3(0.0f, 0.0f, -1.0f);
       camera.position += forward * 100.0f * deltaTime;
     }
 
     if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_S) == GLFW_PRESS)
     {
-      glm::vec3 forward = camera.rotation * glm::vec3(0.0f, 0.0f, -1.0f);
       camera.position -= forward * 100.0f * deltaTime;
+    }
+
+    if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_D) == GLFW_PRESS)
+    {
+      camera.position += right * 100.0f * deltaTime;
+    }
+
+    if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_A) == GLFW_PRESS)
+    {
+      camera.position -= right * 100.0f * deltaTime;
+    }
+
+    if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_SPACE) == GLFW_PRESS)
+    {
+      camera.position += up * 100.0f * deltaTime;
+    }
+
+    if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+    {
+      camera.position -= up * 100.0f * deltaTime;
     }
 
     pollMouse();

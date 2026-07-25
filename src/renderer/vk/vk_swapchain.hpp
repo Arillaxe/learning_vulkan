@@ -201,6 +201,7 @@ public:
     extent = getSwapExtent();
 
     swapchain = createSwapchain(oldSwapchain);
+    images = swapchain.getImages();
     imageViews.clear();
     imageViews = createImageViews();
 
@@ -220,7 +221,7 @@ public:
     {
       recreateSwapchain();
 
-      return imageIndex;
+      return acquireNextImage();
     }
 
     if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
