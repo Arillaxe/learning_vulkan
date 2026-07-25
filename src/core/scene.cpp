@@ -5,50 +5,22 @@
 
 Scene::Scene(VkResource &resource) : vkResource(resource)
 {
-  for (int i = 0; i < 5; i++)
+  Chunk chunk(resource);
+
+  auto &voxels = chunk.getVoxels();
+
+  for (int i = 0; i < CHUNK_SIZE; i++)
   {
-    voxels.push_back({{0, i * 10, 0}});
+    for (int j = 0; j < CHUNK_SIZE; j++)
+    {
+      for (int k = 0; k < CHUNK_SIZE; k++)
+      {
+        voxels[i][j][k] = {glm::vec3(i * 10, j * 10, k * 10), 1};
+      }
+    }
   }
 
-  vertices = voxelsToVertices(voxels);
-  indices.assign(voxelIndices.begin(), voxelIndices.end());
+  chunk.calculateBuffers();
 
-  createVertexBuffer();
-  createIndexBuffer();
-}
-
-void Scene::createVertexBuffer()
-{
-  vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-  auto stagingBuffer = vkResource.createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
-  auto stagingBufferMemory = vkResource.getBufferMemory(stagingBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-  void *dataStaging = stagingBufferMemory.mapMemory(0, bufferSize);
-
-  memcpy(dataStaging, vertices.data(), bufferSize);
-
-  stagingBufferMemory.unmapMemory();
-
-  vertexBuffer = vkResource.createBuffer(bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
-  vertexBufferMemory = vkResource.getBufferMemory(vertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-  vkResource.copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-}
-
-void Scene::createIndexBuffer()
-{
-  vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-  auto stagingBuffer = vkResource.createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
-  auto stagingBufferMemory = vkResource.getBufferMemory(stagingBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-  void *dataStaging = stagingBufferMemory.mapMemory(0, bufferSize);
-
-  memcpy(dataStaging, indices.data(), bufferSize);
-
-  stagingBufferMemory.unmapMemory();
-
-  indexBuffer = vkResource.createBuffer(bufferSize, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst);
-  indexBufferMemory = vkResource.getBufferMemory(indexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-  vkResource.copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+  chunks.push_back(std::move(chunk));
 }

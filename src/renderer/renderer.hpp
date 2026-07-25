@@ -24,6 +24,7 @@ private:
   vk::raii::CommandBuffers commandBuffers;
   MainPipeline mainPipeline;
   Camera &camera;
+  vk::raii::QueryPool queryPool;
 
   void transition_image_layout(
       vk::raii::CommandBuffer &commandBuffer,

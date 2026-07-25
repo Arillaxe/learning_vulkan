@@ -46,20 +46,71 @@ std::vector<Voxel> createWorld()
   return voxels;
 }
 
-std::vector<Vertex> voxelsToVertices(std::vector<Voxel> &voxels)
+struct Direction
+{
+  glm::vec3 forward;
+  std::array<glm::vec3, 4> vertexOffsets;
+};
+
+constexpr std::array<Direction, 6> directions = {{
+    {{0, 0, -1}, {{{-1, 1, -1}, {1, 1, -1}, {1, -1, -1}, {-1, -1, -1}}}}, // Front (-Z)
+    {{0, 0, 1}, {{{1, 1, 1}, {-1, 1, 1}, {-1, -1, 1}, {1, -1, 1}}}},      // Back (+Z)
+    {{-1, 0, 0}, {{{-1, 1, 1}, {-1, 1, -1}, {-1, -1, -1}, {-1, -1, 1}}}}, // Left (-X)
+    {{1, 0, 0}, {{{1, 1, -1}, {1, 1, 1}, {1, -1, 1}, {1, -1, -1}}}},      // Right (+X)
+    {{0, 1, 0}, {{{-1, 1, 1}, {1, 1, 1}, {1, 1, -1}, {-1, 1, -1}}}},      // Top (+Y)
+    {{0, -1, 0}, {{{-1, -1, -1}, {1, -1, -1}, {1, -1, 1}, {-1, -1, 1}}}}, // Bottom (-Y)
+}};
+
+constexpr std::array<uint32_t, 6> faceIndices = {{0, 1, 2, 0, 2, 3}};
+
+std::pair<std::vector<Vertex>, std::vector<uint32_t>> chunkToVertices(Chunk &chunk)
 {
   std::vector<Vertex> vertices;
+  std::vector<uint32_t> indices;
 
-  for (auto &voxel : voxels)
+  auto &voxels = chunk.getVoxels();
+
+  for (int i = 0; i < CHUNK_SIZE; i++)
   {
-    for (size_t i = 0; i < offsets.size(); i++)
+    for (int j = 0; j < CHUNK_SIZE; j++)
     {
-      glm::vec3 vertexPos = voxel.position;
+      for (int k = 0; k < CHUNK_SIZE; k++)
+      {
+        if (voxels[i][j][k].type == 0)
+        {
+          continue;
+        }
 
-      vertexPos += offsets[i] * (static_cast<float>(VOXEL_SIZE) / 2.0f);
-      vertices.push_back({vertexPos, {0.0, 0.0}});
+        for (int d = 0; d < directions.size(); d++)
+        {
+          auto &direction = directions[d];
+
+          if (
+              i + (int)direction.forward.x < CHUNK_SIZE && i + (int)direction.forward.x >= 0 &&
+              j + (int)direction.forward.y < CHUNK_SIZE && j + (int)direction.forward.y >= 0 &&
+              k + (int)direction.forward.z < CHUNK_SIZE && k + (int)direction.forward.z >= 0 &&
+              voxels[i + (int)direction.forward.x][j + (int)direction.forward.y][k + (int)direction.forward.z].type != 0)
+          {
+            continue;
+          }
+
+          glm::vec3 vertexPos = voxels[i][j][k].position;
+
+          uint32_t base = static_cast<uint32_t>(vertices.size());
+
+          for (auto &offset : direction.vertexOffsets)
+          {
+            vertices.push_back({vertexPos + offset * (static_cast<float>(VOXEL_SIZE) / 2.0f), {0.0, 0.0}});
+          }
+
+          for (auto &index : faceIndices)
+          {
+            indices.push_back(base + index);
+          }
+        }
+      }
     }
   }
 
-  return vertices;
+  return {vertices, indices};
 }

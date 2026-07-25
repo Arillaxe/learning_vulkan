@@ -3,6 +3,7 @@
 
 #include <core/voxel.hpp>
 #include <renderer/vertex.hpp>
+#include <core/chunk.hpp>
 #include <array>
 #include <vector>
 
@@ -12,6 +13,6 @@ extern std::array<glm::vec3, 8> offsets;
 extern std::array<uint32_t, 36> voxelIndices;
 
 std::vector<Voxel> createWorld();
-std::vector<Vertex> voxelsToVertices(std::vector<Voxel> &voxels);
+std::pair<std::vector<Vertex>, std::vector<uint32_t>> chunkToVertices(Chunk &chunk);
 
 #endif // WORLD_GENERATOR_HPP

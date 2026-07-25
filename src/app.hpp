@@ -41,7 +41,7 @@ public:
     object.getComponent<TransformComponent>()->setPosition(glm::vec3(0.0f, 0.0f, 100.0f));
     object.getComponent<TransformComponent>()->setScale(glm::vec3(0.5f));
 
-    scene.addEntity(std::move(object));
+    // scene.addEntity(std::move(object));
   }
 
   void run()

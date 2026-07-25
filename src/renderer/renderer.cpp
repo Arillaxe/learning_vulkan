@@ -4,6 +4,8 @@
 #include <ecs/components/transform_component.hpp>
 #include <renderer/push.hpp>
 #include <cassert>
+#include <core/chunk.hpp>
+#include <iostream>
 
 Renderer::Renderer(Window &win, Scene &_scene, Camera &cam)
     : window(win),
@@ -15,7 +17,12 @@ Renderer::Renderer(Window &win, Scene &_scene, Camera &cam)
       scene(_scene),
       commandBuffers(vkCommand.createCommandBuffers(1)),
       mainPipeline(vkContext, vkSwapchain, vkResource),
-      camera(cam) {}
+      camera(cam),
+      queryPool(
+          vkContext.getDevice(),
+          vk::QueryPoolCreateInfo{}
+              .setQueryType(vk::QueryType::eTimestamp)
+              .setQueryCount(2)) {}
 
 void Renderer::transition_image_layout(
     vk::raii::CommandBuffer &commandBuffer,
@@ -58,7 +65,25 @@ void Renderer::transition_image_layout(
 
 void Renderer::render()
 {
+  auto start = std::chrono::high_resolution_clock::now();
+
   vkSynchronization.waitDrawFence();
+  std::array<uint64_t, 2> timestamps{};
+
+  (*vkContext.getDevice()).getQueryPoolResults(*queryPool,
+                                               0,                  // first query
+                                               2,                  // query count
+                                               sizeof(timestamps), // data size
+                                               timestamps.data(),  // data
+                                               sizeof(uint64_t),   // stride
+                                               vk::QueryResultFlagBits::e64);
+
+  double gpuMs =
+      (timestamps[1] - timestamps[0]) *
+      vkContext.getPhysicalDevice().getProperties().limits.timestampPeriod /
+      1'000'000.0;
+
+  std::cout << gpuMs << std::endl;
 
   uint32_t imageIndex = vkSwapchain.acquireNextImage();
   auto &commandBuffer = commandBuffers[0];
@@ -68,6 +93,9 @@ void Renderer::render()
   auto &entities = scene.getEntities();
 
   commandBuffer.begin({});
+
+  commandBuffer.resetQueryPool(*queryPool, 0, 2);
+  commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, *queryPool, 0);
 
   transition_image_layout(
       commandBuffer,
@@ -178,15 +206,17 @@ void Renderer::render()
   PushConstants pushConstants;
   pushConstants.model = glm::mat4(1.0f);
 
-  commandBuffer.bindVertexBuffers(0, *scene.getVertexBuffer(), {0});
-  commandBuffer.bindIndexBuffer(*scene.getIndexBuffer(), 0, vk::IndexTypeValue<uint32_t>::value);
-  commandBuffer.pushConstants<PushConstants>(mainPipeline.getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, pushConstants);
+  auto &chunks = scene.getChunks();
 
-  int verticesCount = scene.getVertices().size();
-
-  for (int i = 0; i < verticesCount / 8; i++)
+  for (auto &chunk : chunks)
   {
-    commandBuffer.drawIndexed(36, 1, 0, 8 * i, 0);
+    commandBuffer.bindVertexBuffers(0, *chunk.getVertexBuffer(), {0});
+    commandBuffer.bindIndexBuffer(*chunk.getIndexBuffer(), 0, vk::IndexTypeValue<uint32_t>::value);
+    commandBuffer.pushConstants<PushConstants>(mainPipeline.getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, pushConstants);
+
+    int indicesCount = chunk.getIndices().size();
+
+    commandBuffer.drawIndexed(indicesCount, 1, 0, 0, 0);
   }
 
   commandBuffer.endRendering();
@@ -202,9 +232,11 @@ void Renderer::render()
       vk::PipelineStageFlagBits2::eBottomOfPipe,
       vk::ImageAspectFlagBits::eColor);
 
+  commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, *queryPool, 1);
+
   commandBuffer.end();
 
-  vkContext.getDevice().waitIdle();
+  // vkContext.getDevice().waitIdle();
 
   mainPipeline.getVkUbo().updateUniformBuffer(camera);
 
@@ -241,6 +273,13 @@ void Renderer::render()
   {
     assert(result == vk::Result::eSuccess);
   }
+
+  auto end = std::chrono::high_resolution_clock::now();
+
+  double cpuMs =
+      std::chrono::duration<double, std::milli>(end - start).count();
+
+  std::cout << cpuMs << std::endl;
 }
 
 void Renderer::waitIdle()

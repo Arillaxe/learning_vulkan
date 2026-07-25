@@ -10,7 +10,7 @@
 CXX      := g++
 CXXSTD   := -std=c++20
 DEFINES  := -D DEBUG
-DEPFLAGS := -MMD -MP
+DEPFLAGS := -MMD -MP -g -O0
 INCLUDES := -Isrc -I"$(VULKAN_SDK)/Include" -I"$(GLFW_PATH)/include" -I./include
 LDFLAGS  := -L"$(GLFW_PATH)/lib-mingw-w64" -L"$(VULKAN_SDK)/Lib"
 LDLIBS   := -lglfw3 -lvulkan-1 -lgdi32
