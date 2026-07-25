@@ -7,6 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <renderer/vk/vk_resource.hpp>
 #include <renderer/vk/vk_swapchain.hpp>
+#include <core/camera.hpp>
 
 class VkUbo
 {
@@ -37,7 +38,7 @@ public:
     return uniformBufferMapped;
   }
 
-  void updateUniformBuffer()
+  void updateUniformBuffer(Camera &camera)
   {
     static auto startTime = std::chrono::high_resolution_clock::now();
     static auto lastTime = startTime;
@@ -50,7 +51,9 @@ public:
 
     UniformBufferObject ubo{};
 
-    ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, -200.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.view =
+        glm::mat4_cast(glm::conjugate(camera.rotation)) *
+        glm::translate(glm::mat4(1.0f), -camera.position);
     ubo.projection = glm::perspective(glm::radians(45.0f), static_cast<float>(vkSwapchain.getExtent().width) / static_cast<float>(vkSwapchain.getExtent().height), 0.1f, 1000.0f);
     ubo.projection[1][1] *= -1;
     ubo.deltaTime = deltaTime * 1000;

@@ -24,7 +24,7 @@ struct PushConstants {
 PushConstants push;
 
 [shader("vertex")]
-VSOutput vertMain(VSInput input) {
+VSOutput vertMain(VSInput input, uint vertexId: SV_VertexID) {
     VSOutput output;
 
     output.pos = mul(ubo.proj, mul(ubo.view, mul(push.model, float4(input.inPosition, 1))));

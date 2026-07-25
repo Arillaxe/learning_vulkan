@@ -13,6 +13,7 @@
 #include <ecs/components/mesh_component.hpp>
 #include <ecs/components/transform_component.hpp>
 #include <renderer/pipelines/main_pipeline.hpp>
+#include <core/camera.hpp>
 
 class Renderer
 {
@@ -26,6 +27,7 @@ private:
   Scene &scene;
   vk::raii::CommandBuffers commandBuffers;
   MainPipeline mainPipeline;
+  Camera &camera;
 
   void transition_image_layout(
       vk::raii::CommandBuffer &commandBuffer,
@@ -67,7 +69,7 @@ private:
   }
 
 public:
-  Renderer(Window &win, Scene &_scene)
+  Renderer(Window &win, Scene &_scene, Camera &cam)
       : window(win),
         vkContext(win),
         vkCommand(vkContext),
@@ -76,7 +78,8 @@ public:
         vkSwapchain(vkContext, win, vkResource, vkSynchronization),
         scene(_scene),
         commandBuffers(vkCommand.createCommandBuffers(1)),
-        mainPipeline(vkContext, vkSwapchain, vkResource) {}
+        mainPipeline(vkContext, vkSwapchain, vkResource),
+        camera(cam) {}
 
   VkResource &getVkResource()
   {
@@ -202,6 +205,20 @@ public:
       commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
     }
 
+    PushConstants pushConstants;
+    pushConstants.model = glm::mat4(1.0f);
+
+    commandBuffer.bindVertexBuffers(0, *scene.getVertexBuffer(), {0});
+    commandBuffer.bindIndexBuffer(*scene.getIndexBuffer(), 0, vk::IndexTypeValue<uint32_t>::value);
+    commandBuffer.pushConstants<PushConstants>(mainPipeline.getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, pushConstants);
+
+    int verticesCount = scene.getVertices().size();
+
+    for (int i = 0; i < verticesCount / 8; i++)
+    {
+      commandBuffer.drawIndexed(36, 1, 0, 8 * i, 0);
+    }
+
     commandBuffer.endRendering();
 
     transition_image_layout(
@@ -219,7 +236,7 @@ public:
 
     vkContext.getDevice().waitIdle();
 
-    mainPipeline.getVkUbo().updateUniformBuffer();
+    mainPipeline.getVkUbo().updateUniformBuffer(camera);
 
     vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
     const vk::SubmitInfo submitInfo{
