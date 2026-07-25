@@ -47,53 +47,28 @@ std::vector<Vertex> voxelsToVertices(std::vector<Voxel> &voxels)
 }
 
 std::array<uint32_t, 36> voxelIndices = {
-    // Front (-Z)
-    0,
-    2,
-    3,
-    0,
-    3,
-    1,
+    // Front
+    0, 3, 2,
+    0, 1, 3,
 
-    // Back (+Z)
-    5,
-    7,
-    6,
-    5,
-    6,
-    4,
+    // Back
+    5, 6, 7,
+    5, 4, 6,
 
-    // Left (-X)
-    4,
-    6,
-    2,
-    4,
-    2,
-    0,
+    // Left
+    4, 2, 6,
+    4, 0, 2,
 
-    // Right (+X)
-    1,
-    3,
-    7,
-    1,
-    7,
-    5,
+    // Right
+    1, 7, 3,
+    1, 5, 7,
 
-    // Top (+Y)
-    4,
-    0,
-    1,
-    4,
-    1,
-    5,
+    // Top
+    4, 1, 0,
+    4, 5, 1,
 
-    // Bottom (-Y)
-    2,
-    6,
-    7,
-    2,
-    7,
-    3,
-};
+    // Bottom
+    2, 7, 6,
+    2, 3, 7};
 
 #endif // WORLD_GENERATOR_HPP

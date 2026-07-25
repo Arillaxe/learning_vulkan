@@ -23,13 +23,6 @@ public:
 
   void pollEvents()
   {
-    std::string cameraPos = std::format(
-        "{:.2f} {:.2f} {:.2f}",
-        camera.position.x,
-        camera.position.y,
-        camera.position.z);
-    glfwSetWindowTitle(window.getGLFWWindowHandle(), cameraPos.c_str());
-
     static auto startTime = std::chrono::high_resolution_clock::now();
     static auto lastTime = startTime;
 
@@ -38,6 +31,25 @@ public:
     float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - lastTime).count();
 
     lastTime = currentTime;
+
+    static float fpsTimer = 0;
+    static float fps = 0;
+
+    fpsTimer += deltaTime;
+
+    if (fpsTimer > 0.25f)
+    {
+      fps = 1.0f / deltaTime;
+      fpsTimer = 0;
+    }
+
+    std::string cameraPos = std::format(
+        "{} FPS {:.2f} {:.2f} {:.2f}",
+        static_cast<int>(fps),
+        camera.position.x,
+        camera.position.y,
+        camera.position.z);
+    glfwSetWindowTitle(window.getGLFWWindowHandle(), cameraPos.c_str());
 
     if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {

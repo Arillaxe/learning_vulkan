@@ -70,7 +70,7 @@ protected:
     vk::PipelineRasterizationStateCreateInfo rasterizer{
         .depthClampEnable = vk::False,
         .rasterizerDiscardEnable = vk::False,
-        .polygonMode = vk::PolygonMode::eFill,
+        .polygonMode = vk::PolygonMode::eLine,
         .cullMode = vk::CullModeFlagBits::eBack,
         .frontFace = vk::FrontFace::eCounterClockwise,
         .depthBiasEnable = vk::False,

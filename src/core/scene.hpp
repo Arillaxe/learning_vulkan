@@ -60,7 +60,7 @@ public:
   {
     for (int i = 0; i < 5; i++)
     {
-      voxels.push_back({{0, i, 0}});
+      voxels.push_back({{0, i * 10, 0}});
     }
 
     vertices = voxelsToVertices(voxels);
