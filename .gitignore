@@ -1,3 +1,6 @@
 main.exe
 slang.spv
 main
+build/
+src/pch.hpp.gch
+src/pch.hpp.d

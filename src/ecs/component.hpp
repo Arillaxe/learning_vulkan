@@ -17,8 +17,6 @@ public:
   }
 };
 
-size_t ComponentTypeIDSystem::nextTypeID = 0;
-
 class Entity;
 
 class Component

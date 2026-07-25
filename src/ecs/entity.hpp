@@ -23,35 +23,9 @@ public:
   bool isActive() const { return active; }
   void setActive(bool isActive) { active = isActive; };
 
-  void init()
-  {
-    for (auto &component : components)
-    {
-      component->init();
-    }
-  }
-
-  void update(float deltaTime)
-  {
-    if (!active)
-      return;
-
-    for (auto &component : components)
-    {
-      component->update(deltaTime);
-    }
-  }
-
-  void render()
-  {
-    if (!active)
-      return;
-
-    for (auto &component : components)
-    {
-      component->render();
-    }
-  }
+  void init();
+  void update(float deltaTime);
+  void render();
 
   template <typename T, typename... Args>
   T *addComponent(Args &&...args)

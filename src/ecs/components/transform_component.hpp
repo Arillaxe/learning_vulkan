@@ -38,20 +38,7 @@ public:
   const glm::quat &getRotation() const { return rotation; }
   const glm::vec3 &getScale() const { return scale; }
 
-  glm::mat4 getTransformMatrix() const
-  {
-    if (transformDirty)
-    {
-      glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), position);
-      glm::mat4 rotationMatrix = glm::mat4_cast(rotation);
-      glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), scale);
-
-      transformMatrix = translationMatrix * rotationMatrix * scaleMatrix;
-      transformDirty = false;
-    }
-
-    return transformMatrix;
-  }
+  glm::mat4 getTransformMatrix() const;
 };
 
 #endif // TRANSFORM_COMPONENT_HPP

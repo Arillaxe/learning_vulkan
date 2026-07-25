@@ -12,52 +12,17 @@ private:
   int WIDTH;
   int HEIGHT;
 
-  static void framebufferResizeCallback(GLFWwindow *window, int width, int height)
-  {
-    auto instance = reinterpret_cast<Window *>(glfwGetWindowUserPointer(window));
-
-    instance->framebufferResized = true;
-  }
+  static void framebufferResizeCallback(GLFWwindow *window, int width, int height);
 
 public:
   bool framebufferResized = false;
 
-  Window(int width, int height) : WIDTH(width), HEIGHT(height)
-  {
-    glfwInit();
+  Window(int width, int height);
+  ~Window();
 
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-    window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-
-    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-    glfwSetWindowUserPointer(window, this);
-
-    glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_TRUE);
-  }
-
-  ~Window()
-  {
-    glfwDestroyWindow(window);
-
-    glfwTerminate();
-  }
-
-  bool shouldClose()
-  {
-    return glfwWindowShouldClose(window);
-  }
-
-  void pollEvents()
-  {
-    glfwPollEvents();
-  }
-
-  GLFWwindow *getGLFWWindowHandle()
-  {
-    return window;
-  }
+  bool shouldClose() { return glfwWindowShouldClose(window); }
+  void pollEvents() { glfwPollEvents(); }
+  GLFWwindow *getGLFWWindowHandle() { return window; }
 };
 
 #endif // WINDOW_HPP

@@ -3,7 +3,8 @@
 
 #include <renderer/vk.hpp>
 #include <renderer/vk/vk_context.hpp>
-#include <core/filesystem.hpp>
+#include <string>
+#include <vector>
 
 class VkShader
 {
@@ -11,28 +12,12 @@ private:
   VkContext &vkContext;
   vk::raii::ShaderModule shaderModule;
 
-  vk::raii::ShaderModule createShaderModule(const std::vector<char> &code) const
-  {
-    vk::ShaderModuleCreateInfo createInfo{
-        .codeSize = code.size() * sizeof(char),
-        .pCode = reinterpret_cast<const uint32_t *>(code.data()),
-    };
-    vk::raii::ShaderModule shaderModule(vkContext.getDevice(), createInfo);
-
-    return shaderModule;
-  }
+  vk::raii::ShaderModule createShaderModule(const std::vector<char> &code) const;
 
 public:
-  VkShader(
-      VkContext &context,
-      const std::string &filename)
-      : vkContext(context),
-        shaderModule(createShaderModule(Filesystem::readFile(filename))) {}
+  VkShader(VkContext &context, const std::string &filename);
 
-  vk::raii::ShaderModule &getShaderModule()
-  {
-    return shaderModule;
-  }
+  vk::raii::ShaderModule &getShaderModule() { return shaderModule; }
 };
 
 #endif // VK_SHADER_HPP
