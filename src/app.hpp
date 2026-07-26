@@ -29,7 +29,7 @@ public:
   App()
       : window(WIDTH, HEIGHT),
         renderer(window, scene, camera),
-        scene(renderer.getVkResource()),
+        scene(renderer.getVkResource(), camera),
         input(window, camera),
         robotMesh(renderer.getVkResource(), "./models/robot.gltf")
   {
@@ -50,6 +50,7 @@ public:
     {
       window.pollEvents();
       input.pollEvents();
+      scene.update();
       renderer.render();
     }
 

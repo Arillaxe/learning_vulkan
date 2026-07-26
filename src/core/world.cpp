@@ -2,13 +2,23 @@
 #include <perlin_noise.hpp>
 #include <core/world.hpp>
 #include <core/world_generator.hpp>
+#include <core/math.hpp>
 
 World::World(VkResource &resource) : vkResource(resource)
 {
 }
 
-void World::generateChunk(int x, int z)
+bool World::loadChunk(int x, int z)
 {
+  ChunkPos existingPos{x, 0, z};
+
+  auto existingChunkIt = chunks.find(existingPos);
+
+  if (existingChunkIt != chunks.end())
+  {
+    return false;
+  }
+
   static const siv::PerlinNoise::seed_type seed = 123456u;
   static const siv::PerlinNoise perlin{seed};
 
@@ -47,39 +57,7 @@ void World::generateChunk(int x, int z)
 
   chunks.emplace(chunkPos, std::move(chunk));
 
-  // auto &storedChunk = chunks.at(chunkPos);
-
-  // auto &vertices = storedChunk.getVertices();
-  // auto &indices = storedChunk.getIndices();
-
-  // ChunkPos pos{x, 0, z};
-  // std::tie(vertices, indices) = chunkToVertices(*this, storedChunk, pos);
-
-  // storedChunk.calculateBuffers();
-}
-
-namespace
-{
-  int floorDiv(int value, int divisor)
-  {
-    int q = value / divisor;
-    int r = value % divisor;
-
-    if (r < 0)
-      --q;
-
-    return q;
-  }
-
-  int floorMod(int value, int divisor)
-  {
-    int r = value % divisor;
-
-    if (r < 0)
-      r += divisor;
-
-    return r;
-  }
+  return true;
 }
 
 Voxel *World::getVoxel(int x, int y, int z)
@@ -100,6 +78,25 @@ Voxel *World::getVoxel(int x, int y, int z)
   const int localZ = floorMod(z, CHUNK_SIZE);
 
   return &it->second.getVoxels()[localX][localY][localZ];
+}
+
+void World::generateChunkMesh(int x, int z)
+{
+  ChunkPos pos = {x, 0, z};
+  auto chunkIt = chunks.find(pos);
+
+  if (chunkIt == chunks.end())
+  {
+    return;
+  }
+
+  auto &chunk = chunkIt->second;
+  auto &vertices = chunk.getVertices();
+  auto &indices = chunk.getIndices();
+
+  std::tie(vertices, indices) = chunkToVertices(*this, chunk, pos);
+
+  chunk.calculateBuffers();
 }
 
 void World::generateChunkMeshes()

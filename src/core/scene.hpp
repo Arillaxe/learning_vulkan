@@ -9,6 +9,7 @@
 #include <vector>
 #include <core/chunk.hpp>
 #include <core/world.hpp>
+#include <core/camera.hpp>
 
 class Scene
 {
@@ -16,14 +17,16 @@ private:
   VkResource &vkResource;
   std::vector<Entity> entities;
   World world;
+  Camera &camera;
 
 public:
-  Scene(VkResource &resource);
+  Scene(VkResource &resource, Camera &cam);
 
   void addEntity(Entity &&entity) { entities.push_back(std::move(entity)); }
 
   std::vector<Entity> &getEntities() { return entities; }
   World &getWorld() { return world; }
+  void update();
 };
 
 #endif // SCENE_HPP

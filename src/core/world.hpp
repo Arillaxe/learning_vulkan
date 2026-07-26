@@ -14,8 +14,9 @@ private:
 
 public:
   World(VkResource &resource);
-  void generateChunk(int x, int z);
+  bool loadChunk(int x, int z);
   void generateChunkMeshes();
+  void generateChunkMesh(int x, int z);
   std::unordered_map<ChunkPos, Chunk, ChunkPosHash> &getChunks() { return chunks; }
   Voxel *getVoxel(int x, int y, int z);
 };

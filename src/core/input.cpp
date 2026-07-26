@@ -10,7 +10,7 @@ Input::Input(Window &win, Camera &cam)
     : window(win),
       camera(cam)
 {
-  camera.position = glm::vec3(0, 0, -200.0f);
+  camera.position = glm::vec3(0, 200, 0);
   camera.rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(0, 1, 0));
   glfwSetInputMode(window.getGLFWWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
