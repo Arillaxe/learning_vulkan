@@ -6,8 +6,9 @@
 #include <cassert>
 #include <core/chunk.hpp>
 #include <iostream>
+#include <algorithm>
 
-Renderer::Renderer(Window &win, Scene &_scene, Camera &cam)
+Renderer::Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<ChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue)
 		: window(win),
 			vkContext(win),
 			vkCommand(vkContext),
@@ -22,7 +23,9 @@ Renderer::Renderer(Window &win, Scene &_scene, Camera &cam)
 					vkContext.getDevice(),
 					vk::QueryPoolCreateInfo{}
 							.setQueryType(vk::QueryType::eTimestamp)
-							.setQueryCount(2)) {}
+							.setQueryCount(2)),
+			loadQueue(lQueue),
+			unloadQueue(uQueue) {}
 
 void Renderer::transition_image_layout(
 		vk::raii::CommandBuffer &commandBuffer,
@@ -206,16 +209,32 @@ void Renderer::render()
 	PushConstants pushConstants;
 	pushConstants.model = glm::mat4(1.0f);
 
-	auto &world = scene.getWorld();
-	auto &chunks = world.getChunks();
-
-	for (auto &[pos, chunk] : chunks)
+	ChunkPos toUnload;
+	while (unloadQueue.tryPop(toUnload))
 	{
-		commandBuffer.bindVertexBuffers(0, *chunk.getVertexBuffer(), {0});
-		commandBuffer.bindIndexBuffer(*chunk.getIndexBuffer(), 0, vk::IndexTypeValue<uint32_t>::value);
+		auto meshToUnloadIt = std::find_if(chunkMeshes.begin(), chunkMeshes.end(), [&toUnload](const GPUChunkMesh &mesh)
+																			 { return mesh.getChunkPos() == toUnload; });
+
+		if (meshToUnloadIt == chunkMeshes.end())
+			continue;
+
+		chunkMeshes.erase(meshToUnloadIt);
+	}
+
+	ChunkMesh toLoad;
+	while (loadQueue.tryPop(toLoad))
+	{
+		auto &mesh = chunkMeshes.emplace_back(&vkResource, toLoad.chunkPos);
+		mesh.generateRenderMesh(toLoad.vertices, toLoad.indices);
+	}
+
+	for (auto &chunkMesh : chunkMeshes)
+	{
+		commandBuffer.bindVertexBuffers(0, *chunkMesh.getVertexBuffer(), {0});
+		commandBuffer.bindIndexBuffer(*chunkMesh.getIndexBuffer(), 0, vk::IndexTypeValue<uint32_t>::value);
 		commandBuffer.pushConstants<PushConstants>(mainPipeline.getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, pushConstants);
 
-		int indicesCount = chunk.getIndices().size();
+		int indicesCount = chunkMesh.getIndicesCount();
 
 		commandBuffer.drawIndexed(indicesCount, 1, 0, 0, 0);
 	}

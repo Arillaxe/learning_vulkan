@@ -1,63 +1,35 @@
 #include <core/world.hpp>
-#include <perlin_noise.hpp>
-#include <core/world.hpp>
-#include <core/world_generator.hpp>
+#include <core/chunk_generator.hpp>
 #include <core/math.hpp>
 
-World::World(VkResource &resource) : vkResource(resource)
+World::World(uint32_t seed) : chunkGenerator(seed)
 {
 }
 
-bool World::loadChunk(int x, int z)
+Chunk &World::loadChunk(int x, int z)
 {
-  ChunkPos existingPos{x, 0, z};
+  ChunkPos pos{x, 0, z};
 
-  auto existingChunkIt = chunks.find(existingPos);
+  auto exisitingChunkIt = chunks.find(pos);
 
-  if (existingChunkIt != chunks.end())
+  auto [it, inserted] = chunks.try_emplace(pos);
+
+  if (exisitingChunkIt != chunks.end())
   {
-    return false;
+    return exisitingChunkIt->second;
   }
 
-  static const siv::PerlinNoise::seed_type seed = 123456u;
-  static const siv::PerlinNoise perlin{seed};
+  chunks.emplace(pos, chunkGenerator.generateChunk(x, z));
+  Chunk &newChunk = chunks.find(pos)->second;
 
-  Chunk chunk(vkResource);
+  return newChunk;
+}
 
-  auto &voxels = chunk.getVoxels();
+void World::unloadChunk(int x, int z)
+{
+  ChunkPos pos{x, 0, z};
 
-  for (int i = 0; i < CHUNK_SIZE; i++)
-  {
-    for (int j = 0; j < CHUNK_SIZE; j++)
-    {
-      for (int k = 0; k < CHUNK_SIZE; k++)
-      {
-        voxels[i][j][k] = {glm::vec3((x * CHUNK_SIZE * VOXEL_SIZE) + i * VOXEL_SIZE, j * VOXEL_SIZE, (z * CHUNK_SIZE * VOXEL_SIZE) + k * VOXEL_SIZE), 0};
-      }
-    }
-  }
-
-  for (int i = 0; i < CHUNK_SIZE; i++)
-  {
-    for (int j = 0; j < CHUNK_SIZE; j++)
-    {
-      const double noise = perlin.octave2D_01(((i + x * CHUNK_SIZE) * 0.01), ((j + z * CHUNK_SIZE) * 0.01), 4);
-      int y = std::min(
-          static_cast<int>(CHUNK_SIZE * noise),
-          CHUNK_SIZE - 1);
-
-      for (int k = 0; k <= y; k++)
-      {
-        voxels[i][k][j].type = 1;
-      }
-    }
-  }
-
-  ChunkPos chunkPos = {x, 0, z};
-
-  chunks.emplace(chunkPos, std::move(chunk));
-
-  return true;
+  chunks.erase(pos);
 }
 
 Voxel *World::getVoxel(int x, int y, int z)
@@ -77,45 +49,19 @@ Voxel *World::getVoxel(int x, int y, int z)
   const int localY = floorMod(y, CHUNK_SIZE);
   const int localZ = floorMod(z, CHUNK_SIZE);
 
-  return &it->second.getVoxels()[localX][localY][localZ];
+  return &it->second.voxels[localX][localY][localZ];
 }
 
-void World::generateChunkMesh(int x, int z)
+Chunk *World::getChunk(int x, int z)
 {
-  ChunkPos pos = {x, 0, z};
+  ChunkPos pos{x, 0, z};
+
   auto chunkIt = chunks.find(pos);
 
   if (chunkIt == chunks.end())
   {
-    return;
+    return nullptr;
   }
 
-  auto &chunk = chunkIt->second;
-  auto &vertices = chunk.getVertices();
-  auto &indices = chunk.getIndices();
-
-  std::tie(vertices, indices) = chunkToVertices(*this, chunk, pos);
-
-  chunk.calculateBuffers();
-}
-
-void World::generateChunkMeshes()
-{
-  for (auto &[pos, chunk] : chunks)
-  {
-    auto &vertices = chunk.getVertices();
-    auto &indices = chunk.getIndices();
-
-    std::tie(vertices, indices) = chunkToVertices(*this, chunk, pos);
-
-    chunk.calculateBuffers();
-  }
-}
-
-void World::regenNeighboringChunkMeshes(int x, int z)
-{
-  generateChunkMesh(x - 1, z);
-  generateChunkMesh(x + 1, z);
-  generateChunkMesh(x, z - 1);
-  generateChunkMesh(x, z + 1);
+  return &chunkIt->second;
 }

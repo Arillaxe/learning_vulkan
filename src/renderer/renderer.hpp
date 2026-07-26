@@ -10,6 +10,9 @@
 #include <renderer/pipelines/main_pipeline.hpp>
 #include <core/scene.hpp>
 #include <core/camera.hpp>
+#include <renderer/gpu_chunk_mesh.hpp>
+#include <core/thread_queue.hpp>
+#include <core/chunk_mesh.hpp>
 
 class Renderer
 {
@@ -25,6 +28,9 @@ private:
   MainPipeline mainPipeline;
   Camera &camera;
   vk::raii::QueryPool queryPool;
+  std::vector<GPUChunkMesh> chunkMeshes;
+  ThreadQueue<ChunkMesh> &loadQueue;
+  ThreadQueue<ChunkPos> &unloadQueue;
 
   void transition_image_layout(
       vk::raii::CommandBuffer &commandBuffer,
@@ -38,7 +44,7 @@ private:
       vk::ImageAspectFlags image_aspect_flags);
 
 public:
-  Renderer(Window &win, Scene &_scene, Camera &cam);
+  Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<ChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue);
 
   VkResource &getVkResource() { return vkResource; }
 

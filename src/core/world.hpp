@@ -2,19 +2,21 @@
 #define WORLD_HPP
 
 #include <unordered_map>
-#include <renderer/vk/vk_resource.hpp>
 #include <core/voxel.hpp>
 #include <core/chunk.hpp>
+#include <core/chunk_generator.hpp>
 
 class World
 {
 private:
-  VkResource &vkResource;
+  ChunkGenerator chunkGenerator;
   std::unordered_map<ChunkPos, Chunk, ChunkPosHash> chunks;
 
 public:
-  World(VkResource &resource);
-  bool loadChunk(int x, int z);
+  World(uint32_t seed);
+  Chunk &loadChunk(int x, int z);
+  void unloadChunk(int x, int z);
+  Chunk *getChunk(int x, int z);
   void generateChunkMeshes();
   void generateChunkMesh(int x, int z);
   void regenNeighboringChunkMeshes(int x, int z);

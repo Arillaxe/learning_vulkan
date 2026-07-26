@@ -11,6 +11,10 @@
 #include <ecs/components/transform_component.hpp>
 #include <core/input.hpp>
 #include <core/camera.hpp>
+#include <core/world.hpp>
+#include <core/thread_queue.hpp>
+#include <thread>
+#include <core/chunk_system.hpp>
 
 class App
 {
@@ -19,18 +23,27 @@ private:
   int WIDTH = 1280;
   Window window;
   Camera camera;
-  Renderer renderer;
   Scene scene;
   Input input;
+  World world;
+
+  std::thread chunkSystemThread;
+  ThreadQueue<ChunkMesh> loadQueue;
+  ThreadQueue<ChunkPos> unloadQueue;
+
+  ChunkSystem chunkSystem;
+
+  Renderer renderer;
 
   Mesh robotMesh;
 
 public:
   App()
       : window(WIDTH, HEIGHT),
-        renderer(window, scene, camera),
-        scene(renderer.getVkResource(), camera),
+        renderer(window, scene, camera, loadQueue, unloadQueue),
         input(window, camera),
+        world(123456u),
+        chunkSystem(camera, world, loadQueue, unloadQueue),
         robotMesh(renderer.getVkResource(), "./models/robot.gltf")
   {
     Entity object("object");
@@ -42,6 +55,8 @@ public:
     object.getComponent<TransformComponent>()->setScale(glm::vec3(0.5f));
 
     // scene.addEntity(std::move(object));
+
+    chunkSystemThread = std::thread(&ChunkSystem::run, &chunkSystem);
   }
 
   void run()
@@ -50,9 +65,11 @@ public:
     {
       window.pollEvents();
       input.pollEvents();
-      scene.update();
       renderer.render();
     }
+
+    chunkSystem.close();
+    chunkSystemThread.join();
 
     renderer.waitIdle();
   }
