@@ -8,13 +8,14 @@
 #include <utility>
 #include <vector>
 #include <core/chunk.hpp>
+#include <core/world.hpp>
 
 class Scene
 {
 private:
   VkResource &vkResource;
   std::vector<Entity> entities;
-  std::vector<Chunk> chunks;
+  World world;
 
 public:
   Scene(VkResource &resource);
@@ -22,7 +23,7 @@ public:
   void addEntity(Entity &&entity) { entities.push_back(std::move(entity)); }
 
   std::vector<Entity> &getEntities() { return entities; }
-  std::vector<Chunk> &getChunks() { return chunks; }
+  World &getWorld() { return world; }
 };
 
 #endif // SCENE_HPP

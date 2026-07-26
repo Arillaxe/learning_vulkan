@@ -206,9 +206,10 @@ void Renderer::render()
   PushConstants pushConstants;
   pushConstants.model = glm::mat4(1.0f);
 
-  auto &chunks = scene.getChunks();
+  auto &world = scene.getWorld();
+  auto &chunks = world.getChunks();
 
-  for (auto &chunk : chunks)
+  for (auto &[pos, chunk] : chunks)
   {
     commandBuffer.bindVertexBuffers(0, *chunk.getVertexBuffer(), {0});
     commandBuffer.bindIndexBuffer(*chunk.getIndexBuffer(), 0, vk::IndexTypeValue<uint32_t>::value);

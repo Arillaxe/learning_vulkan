@@ -29,7 +29,7 @@ void VkUbo::updateUniformBuffer(Camera &camera)
   ubo.view =
       glm::mat4_cast(glm::conjugate(camera.rotation)) *
       glm::translate(glm::mat4(1.0f), -camera.position);
-  ubo.projection = glm::perspective(glm::radians(45.0f), static_cast<float>(vkSwapchain.getExtent().width) / static_cast<float>(vkSwapchain.getExtent().height), 0.1f, 1000.0f);
+  ubo.projection = glm::perspective(glm::radians(45.0f), static_cast<float>(vkSwapchain.getExtent().width) / static_cast<float>(vkSwapchain.getExtent().height), 0.1f, 100000.0f);
   ubo.projection[1][1] *= -1;
   ubo.deltaTime = deltaTime * 1000;
 

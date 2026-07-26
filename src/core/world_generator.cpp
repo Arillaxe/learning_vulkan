@@ -63,7 +63,7 @@ constexpr std::array<Direction, 6> directions = {{
 
 constexpr std::array<uint32_t, 6> faceIndices = {{0, 1, 2, 0, 2, 3}};
 
-std::pair<std::vector<Vertex>, std::vector<uint32_t>> chunkToVertices(Chunk &chunk)
+std::pair<std::vector<Vertex>, std::vector<uint32_t>> chunkToVertices(World &world, Chunk &chunk, const ChunkPos &pos)
 {
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
@@ -85,11 +85,9 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> chunkToVertices(Chunk &chu
         {
           auto &direction = directions[d];
 
-          if (
-              i + (int)direction.forward.x < CHUNK_SIZE && i + (int)direction.forward.x >= 0 &&
-              j + (int)direction.forward.y < CHUNK_SIZE && j + (int)direction.forward.y >= 0 &&
-              k + (int)direction.forward.z < CHUNK_SIZE && k + (int)direction.forward.z >= 0 &&
-              voxels[i + (int)direction.forward.x][j + (int)direction.forward.y][k + (int)direction.forward.z].type != 0)
+          auto *voxel = world.getVoxel(pos.x * CHUNK_SIZE + i + (int)direction.forward.x, pos.y * CHUNK_SIZE + j + (int)direction.forward.y, pos.z * CHUNK_SIZE + k + (int)direction.forward.z);
+
+          if (voxel != nullptr && voxel->type != 0)
           {
             continue;
           }

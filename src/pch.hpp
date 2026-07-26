@@ -34,4 +34,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <perlin_noise.hpp>
+
 #endif // PCH_HPP

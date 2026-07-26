@@ -2,25 +2,18 @@
 
 #include <core/world_generator.hpp>
 #include <cstring>
+#include <random>
+#include <iostream>
 
-Scene::Scene(VkResource &resource) : vkResource(resource)
+Scene::Scene(VkResource &resource) : vkResource(resource), world(resource)
 {
-  Chunk chunk(resource);
-
-  auto &voxels = chunk.getVoxels();
-
-  for (int i = 0; i < CHUNK_SIZE; i++)
+  for (int i = 0; i < 10; i++)
   {
-    for (int j = 0; j < CHUNK_SIZE; j++)
+    for (int j = 0; j < 10; j++)
     {
-      for (int k = 0; k < CHUNK_SIZE; k++)
-      {
-        voxels[i][j][k] = {glm::vec3(i * 10, j * 10, k * 10), 1};
-      }
+      world.generateChunk(i, j);
     }
   }
 
-  chunk.calculateBuffers();
-
-  chunks.push_back(std::move(chunk));
+  world.generateChunkMeshes();
 }

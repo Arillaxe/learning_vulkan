@@ -1,5 +1,4 @@
 #include <core/chunk.hpp>
-#include <core/world_generator.hpp>
 
 Chunk::Chunk(VkResource &resource) : vkResource(resource)
 {
@@ -7,8 +6,6 @@ Chunk::Chunk(VkResource &resource) : vkResource(resource)
 
 void Chunk::calculateBuffers()
 {
-  std::tie(vertices, indices) = chunkToVertices(*this);
-
   createVertexBuffer();
   createIndexBuffer();
 }
