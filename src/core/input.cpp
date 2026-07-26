@@ -6,6 +6,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+constexpr float CAMERA_SPEED = 500.0f;
+
 Input::Input(Window &win, Camera &cam)
     : window(win),
       camera(cam)
@@ -52,36 +54,36 @@ void Input::pollEvents()
 
   glm::vec3 forward = camera.rotation * glm::vec3(0.0f, 0.0f, -1.0f);
   glm::vec3 right = camera.rotation * glm::vec3(1.0f, 0.0f, 0.0f);
-  glm::vec3 up = camera.rotation * glm::vec3(0.0f, 1.0f, 0.0f);
+  glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 
   if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_W) == GLFW_PRESS)
   {
-    camera.position += forward * 100.0f * deltaTime;
+    camera.position += forward * CAMERA_SPEED * deltaTime;
   }
 
   if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_S) == GLFW_PRESS)
   {
-    camera.position -= forward * 100.0f * deltaTime;
+    camera.position -= forward * CAMERA_SPEED * deltaTime;
   }
 
   if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_D) == GLFW_PRESS)
   {
-    camera.position += right * 100.0f * deltaTime;
+    camera.position += right * CAMERA_SPEED * deltaTime;
   }
 
   if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_A) == GLFW_PRESS)
   {
-    camera.position -= right * 100.0f * deltaTime;
+    camera.position -= right * CAMERA_SPEED * deltaTime;
   }
 
   if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_SPACE) == GLFW_PRESS)
   {
-    camera.position += up * 100.0f * deltaTime;
+    camera.position += up * CAMERA_SPEED * deltaTime;
   }
 
   if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
   {
-    camera.position -= up * 100.0f * deltaTime;
+    camera.position -= up * CAMERA_SPEED * deltaTime;
   }
 
   pollMouse();

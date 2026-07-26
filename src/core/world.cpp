@@ -32,7 +32,7 @@ bool World::loadChunk(int x, int z)
     {
       for (int k = 0; k < CHUNK_SIZE; k++)
       {
-        voxels[i][j][k] = {glm::vec3((x * CHUNK_SIZE * 10) + i * 10, j * 10, (z * CHUNK_SIZE * 10) + k * 10), 0};
+        voxels[i][j][k] = {glm::vec3((x * CHUNK_SIZE * VOXEL_SIZE) + i * VOXEL_SIZE, j * VOXEL_SIZE, (z * CHUNK_SIZE * VOXEL_SIZE) + k * VOXEL_SIZE), 0};
       }
     }
   }
@@ -110,4 +110,12 @@ void World::generateChunkMeshes()
 
     chunk.calculateBuffers();
   }
+}
+
+void World::regenNeighboringChunkMeshes(int x, int z)
+{
+  generateChunkMesh(x - 1, z);
+  generateChunkMesh(x + 1, z);
+  generateChunkMesh(x, z - 1);
+  generateChunkMesh(x, z + 1);
 }

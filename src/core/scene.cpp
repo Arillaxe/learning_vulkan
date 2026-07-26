@@ -8,45 +8,37 @@
 
 Scene::Scene(VkResource &resource, Camera &cam) : vkResource(resource), world(resource), camera(cam)
 {
-  for (int i = 0; i < 10; i++)
-  {
-    for (int j = 0; j < 10; j++)
-    {
-      world.loadChunk(i, j);
-    }
-  }
+  // for (int i = 0; i < 10; i++)
+  // {
+  //   for (int j = 0; j < 10; j++)
+  //   {
+  //     world.loadChunk(i, j);
+  //   }
+  // }
 
-  world.generateChunkMeshes();
+  // world.generateChunkMeshes();
 }
-
-std::array<glm::ivec2, 4> chunkOffsets = {{{0, 0}, {0, CHUNK_SIZE}, {CHUNK_SIZE, 0}, {CHUNK_SIZE, CHUNK_SIZE}}};
 
 std::vector<glm::ivec2> getChunksAround(glm::vec3 &position)
 {
-  static int viewDistance = 3;
+  static int viewDistance = 12;
+  constexpr int chunkWorldSize = CHUNK_SIZE * VOXEL_SIZE;
 
   std::vector<glm::ivec2> coords;
 
-  glm::ivec2 v1{(int)position.x - viewDistance * CHUNK_SIZE, (int)position.z - viewDistance * CHUNK_SIZE};
-  glm::ivec2 v2{(int)position.x + viewDistance * CHUNK_SIZE, (int)position.z + viewDistance * CHUNK_SIZE};
-  float radius = viewDistance * CHUNK_SIZE;
+  int centerX = floorDiv((int)position.x, chunkWorldSize);
+  int centerZ = floorDiv((int)position.z, chunkWorldSize);
 
-  for (int i = v1.x; i <= v2.x; i += CHUNK_SIZE)
+  for (int cx = centerX - viewDistance; cx <= centerX + viewDistance; cx++)
   {
-    for (int j = v1.y; j <= v2.y; j += CHUNK_SIZE)
+    for (int cz = centerZ - viewDistance; cz <= centerZ + viewDistance; cz++)
     {
-      for (auto &offset : chunkOffsets)
+      int dx = cx - centerX;
+      int dz = cz - centerZ;
+
+      if (dx * dx + dz * dz <= viewDistance * viewDistance)
       {
-        float distance = glm::distance(glm::vec2{position.x, position.z}, glm::vec2(i + offset.x, j + offset.y));
-
-        if (distance <= radius)
-        {
-          int chunkX = floorDiv(i, CHUNK_SIZE);
-          int chunkY = floorDiv(j, CHUNK_SIZE);
-          coords.emplace_back(glm::ivec2{chunkX, chunkY});
-
-          break;
-        }
+        coords.emplace_back(glm::ivec2{cx, cz});
       }
     }
   }
@@ -62,6 +54,7 @@ void Scene::update()
   {
     if (world.loadChunk(coord.x, coord.y))
     {
+      world.regenNeighboringChunkMeshes(coord.x, coord.y);
       world.generateChunkMesh(coord.x, coord.y);
     }
   }
