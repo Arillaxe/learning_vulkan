@@ -212,23 +212,19 @@ void Renderer::render()
 	ChunkPos toUnload;
 	while (unloadQueue.tryPop(toUnload))
 	{
-		auto meshToUnloadIt = std::find_if(chunkMeshes.begin(), chunkMeshes.end(), [&toUnload](const GPUChunkMesh &mesh)
-																			 { return mesh.getChunkPos() == toUnload; });
-
-		if (meshToUnloadIt == chunkMeshes.end())
-			continue;
-
-		chunkMeshes.erase(meshToUnloadIt);
+		chunkMeshes.erase(toUnload);
 	}
 
 	ChunkMesh toLoad;
 	while (loadQueue.tryPop(toLoad))
 	{
-		auto &mesh = chunkMeshes.emplace_back(&vkResource, toLoad.chunkPos);
-		mesh.generateRenderMesh(toLoad.vertices, toLoad.indices);
+		auto it = chunkMeshes.find(toLoad.chunkPos);
+		if (it == chunkMeshes.end())
+			it = chunkMeshes.try_emplace(toLoad.chunkPos, &vkResource, toLoad.chunkPos).first;
+		it->second.generateRenderMesh(toLoad.vertices, toLoad.indices);
 	}
 
-	for (auto &chunkMesh : chunkMeshes)
+	for (auto &[pos, chunkMesh] : chunkMeshes)
 	{
 		commandBuffer.bindVertexBuffers(0, *chunkMesh.getVertexBuffer(), {0});
 		commandBuffer.bindIndexBuffer(*chunkMesh.getIndexBuffer(), 0, vk::IndexTypeValue<uint32_t>::value);

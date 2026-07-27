@@ -4,13 +4,14 @@
 #include <core/chunk.hpp>
 #include <core/voxel.hpp>
 #include <core/chunk_mesh.hpp>
+#include <iostream>
 
 ChunkSystem::ChunkSystem(Camera &cam, World &w, ThreadQueue<ChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue)
     : camera(cam), loadQueue(lQueue), unloadQueue(uQueue), world(w), chunkMeshGenerator(w) {}
 
 std::vector<glm::ivec2> ChunkSystem::getChunksAround(glm::vec3 &position)
 {
-  static int viewDistance = 5;
+  static int viewDistance = 12;
   constexpr int chunkWorldSize = CHUNK_SIZE * VOXEL_SIZE;
 
   std::vector<glm::ivec2> coords;
@@ -93,7 +94,7 @@ void ChunkSystem::update()
       {
         auto *chunk = world.getChunk(coord.x + neighbor.x, coord.y + neighbor.y);
 
-        if (!chunk)
+        if (!chunk || !chunk->isMeshed)
           continue;
 
         auto neighborMesh = chunkMeshGenerator.getChunkMesh(*chunk);

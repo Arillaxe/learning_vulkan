@@ -13,6 +13,7 @@
 #include <renderer/gpu_chunk_mesh.hpp>
 #include <core/thread_queue.hpp>
 #include <core/chunk_mesh.hpp>
+#include <unordered_map>
 
 class Renderer
 {
@@ -28,7 +29,7 @@ private:
   MainPipeline mainPipeline;
   Camera &camera;
   vk::raii::QueryPool queryPool;
-  std::vector<GPUChunkMesh> chunkMeshes;
+  std::unordered_map<ChunkPos, GPUChunkMesh, ChunkPosHash> chunkMeshes;
   ThreadQueue<ChunkMesh> &loadQueue;
   ThreadQueue<ChunkPos> &unloadQueue;
 

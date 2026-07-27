@@ -12,8 +12,6 @@ Chunk &World::loadChunk(int x, int z)
 
   auto exisitingChunkIt = chunks.find(pos);
 
-  auto [it, inserted] = chunks.try_emplace(pos);
-
   if (exisitingChunkIt != chunks.end())
   {
     return exisitingChunkIt->second;

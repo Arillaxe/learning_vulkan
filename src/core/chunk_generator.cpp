@@ -40,5 +40,7 @@ Chunk ChunkGenerator::generateChunk(int x, int z)
     }
   }
 
+  chunk.pos = {x, 0, z};
+
   return chunk;
 }

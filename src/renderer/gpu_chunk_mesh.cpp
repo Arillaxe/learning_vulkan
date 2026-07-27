@@ -1,4 +1,5 @@
 #include <renderer/gpu_chunk_mesh.hpp>
+#include <iostream>
 
 GPUChunkMesh::GPUChunkMesh(VkResource *resource, ChunkPos pos) : vkResource(resource), chunkPos(pos) {}
 
@@ -39,4 +40,6 @@ void GPUChunkMesh::generateRenderMesh(std::vector<Vertex> &vertices, std::vector
 
     (*vkResource).copyBuffer(stagingBuffer, indexBuffer, bufferSize);
   }
+
+  indicesCount = indices.size();
 }

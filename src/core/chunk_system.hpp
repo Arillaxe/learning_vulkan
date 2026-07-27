@@ -6,6 +6,8 @@
 #include <core/world.hpp>
 #include <core/chunk_mesh_generator.hpp>
 #include <atomic>
+#include <thread>
+#include <chrono>
 
 struct IVec2Hash
 {
@@ -37,9 +39,15 @@ public:
 
   void run()
   {
+    constexpr auto tickInterval = std::chrono::milliseconds(16);
+
     while (!shouldClose)
     {
+      auto tickStart = std::chrono::steady_clock::now();
+
       update();
+
+      std::this_thread::sleep_until(tickStart + tickInterval);
     }
   }
 

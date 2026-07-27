@@ -2,6 +2,7 @@
 
 #include <array>
 #include <stdexcept>
+#include <iostream>
 
 VkResource::VkResource(VkContext &context, VkCommand &command)
     : vkContext(context),
@@ -58,6 +59,12 @@ vk::raii::ImageView VkResource::createImageView(vk::Image const &image, vk::Form
 
 vk::raii::Buffer VkResource::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage)
 {
+  static uint32_t counter = 0;
+
+  counter++;
+
+  // std::cout << counter << std::endl;
+
   vk::BufferCreateInfo bufferInfo{
       .size = size,
       .usage = usage,
