@@ -47,6 +47,7 @@ public:
   uint32_t getTransferQueueFamilyIndex() { return transferQueueIndex; }
   vk::raii::Queue &getQueue() { return queue; }
   vk::raii::Queue &getTransferQueue() { return transferQueue; }
+  vk::raii::Instance &getInstance() { return instance; }
 };
 
 #endif // VK_CONTEXT_HPP

@@ -86,11 +86,20 @@ void Input::pollEvents()
     camera.position -= up * CAMERA_SPEED * deltaTime;
   }
 
+  if (glfwGetKey(window.getGLFWWindowHandle(), GLFW_KEY_E) == GLFW_PRESS)
+  {
+    glfwSetInputMode(window.getGLFWWindowHandle(), GLFW_CURSOR, mouseFree ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    mouseFree = !mouseFree;
+  }
+
   pollMouse();
 }
 
 void Input::pollMouse()
 {
+  if (mouseFree)
+    return;
+
   static bool firstMouse = true;
   static double lastX, lastY;
 

@@ -7,6 +7,7 @@
 #include <core/chunk.hpp>
 #include <iostream>
 #include <algorithm>
+#include "renderer.hpp"
 
 Renderer::Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue)
 		: window(win),
@@ -25,7 +26,8 @@ Renderer::Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<GPUChunk
 							.setQueryType(vk::QueryType::eTimestamp)
 							.setQueryCount(2)),
 			loadQueue(lQueue),
-			unloadQueue(uQueue) {}
+			unloadQueue(uQueue),
+			gui(window, vkContext, vkResource, vkSwapchain) {}
 
 void Renderer::transition_image_layout(
 		vk::raii::CommandBuffer &commandBuffer,
@@ -237,6 +239,16 @@ void Renderer::render()
 		commandBuffer.drawIndexed(indicesCount, 1, 0, 0, 0);
 	}
 
+	// GUI
+
+	gui.beginFrame();
+
+	drawGUI();
+
+	gui.endFrame(commandBuffer);
+
+	// end GUI
+
 	commandBuffer.endRendering();
 
 	transition_image_layout(
@@ -303,4 +315,9 @@ void Renderer::render()
 void Renderer::waitIdle()
 {
 	vkContext.getDevice().waitIdle();
+}
+
+void Renderer::drawGUI()
+{
+	ImGui::ShowDemoWindow();
 }

@@ -9,6 +9,7 @@ class Input
 private:
   Window &window;
   Camera &camera;
+  bool mouseFree = false;
 
 public:
   Input(Window &win, Camera &cam);

@@ -3,6 +3,7 @@
 #include <array>
 #include <stdexcept>
 #include <iostream>
+#include <imgui/imgui_impl_vulkan.h>
 
 VkResource::VkResource(VkContext &context, VkCommand &command)
     : vkContext(context),
@@ -29,15 +30,23 @@ uint32_t VkResource::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags
 
 vk::raii::DescriptorPool VkResource::createDescriptorPool()
 {
-  std::array<vk::DescriptorPoolSize, 1> poolSize{{
+  std::array<vk::DescriptorPoolSize, 3> poolSize{{
       {
           .type = vk::DescriptorType::eUniformBuffer,
           .descriptorCount = 1,
       },
+      {
+          .type = vk::DescriptorType::eSampledImage,
+          .descriptorCount = IMGUI_IMPL_VULKAN_MINIMUM_SAMPLER_POOL_SIZE,
+      },
+      {
+          .type = vk::DescriptorType::eSampler,
+          .descriptorCount = IMGUI_IMPL_VULKAN_MINIMUM_SAMPLER_POOL_SIZE,
+      },
   }};
   vk::DescriptorPoolCreateInfo poolInfo{
       .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-      .maxSets = 1,
+      .maxSets = 100,
       .poolSizeCount = static_cast<uint32_t>(poolSize.size()),
       .pPoolSizes = poolSize.data(),
   };

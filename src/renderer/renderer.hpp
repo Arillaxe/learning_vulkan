@@ -14,6 +14,7 @@
 #include <core/thread_queue.hpp>
 #include <core/chunk_mesh.hpp>
 #include <unordered_map>
+#include <renderer/gui.hpp>
 
 class Renderer
 {
@@ -32,6 +33,7 @@ private:
   std::unordered_map<ChunkPos, GPUChunkMesh, ChunkPosHash> chunkMeshes;
   ThreadQueue<GPUChunkMesh> &loadQueue;
   ThreadQueue<ChunkPos> &unloadQueue;
+  GUI gui;
 
   void transition_image_layout(
       vk::raii::CommandBuffer &commandBuffer,
@@ -51,6 +53,7 @@ public:
 
   void render();
   void waitIdle();
+  void drawGUI();
 };
 
 #endif // RENDERER_HPP
