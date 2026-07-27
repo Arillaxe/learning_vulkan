@@ -15,6 +15,7 @@
 #include <core/thread_queue.hpp>
 #include <thread>
 #include <core/chunk_system.hpp>
+#include <renderer/gpu_chunk_mesh.hpp>
 
 class App
 {
@@ -28,12 +29,11 @@ private:
   World world;
 
   std::thread chunkSystemThread;
-  ThreadQueue<ChunkMesh> loadQueue;
+  ThreadQueue<GPUChunkMesh> loadQueue;
   ThreadQueue<ChunkPos> unloadQueue;
 
-  ChunkSystem chunkSystem;
-
   Renderer renderer;
+  ChunkSystem chunkSystem;
 
   Mesh robotMesh;
 
@@ -43,7 +43,7 @@ public:
         renderer(window, scene, camera, loadQueue, unloadQueue),
         input(window, camera),
         world(123456u),
-        chunkSystem(camera, world, loadQueue, unloadQueue),
+        chunkSystem(renderer.getVkResource(), camera, world, loadQueue, unloadQueue),
         robotMesh(renderer.getVkResource(), "./models/robot.gltf")
   {
     Entity object("object");

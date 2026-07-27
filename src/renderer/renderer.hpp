@@ -30,7 +30,7 @@ private:
   Camera &camera;
   vk::raii::QueryPool queryPool;
   std::unordered_map<ChunkPos, GPUChunkMesh, ChunkPosHash> chunkMeshes;
-  ThreadQueue<ChunkMesh> &loadQueue;
+  ThreadQueue<GPUChunkMesh> &loadQueue;
   ThreadQueue<ChunkPos> &unloadQueue;
 
   void transition_image_layout(
@@ -45,7 +45,7 @@ private:
       vk::ImageAspectFlags image_aspect_flags);
 
 public:
-  Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<ChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue);
+  Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue);
 
   VkResource &getVkResource() { return vkResource; }
 

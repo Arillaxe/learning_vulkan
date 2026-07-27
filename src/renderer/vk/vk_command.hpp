@@ -7,9 +7,10 @@ class VkCommand
 {
 private:
   VkContext &vkContext;
-  vk::raii::CommandPool commandPool;
+  vk::raii::CommandPool graphicsCommandPool;
+  vk::raii::CommandPool transferCommandPool;
 
-  vk::raii::CommandPool createCommandPool();
+  vk::raii::CommandPool createCommandPool(uint32_t queueFamilyIndex);
 
 public:
   VkCommand(VkContext &context);

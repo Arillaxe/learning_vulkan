@@ -6,12 +6,12 @@
 #include <core/chunk_mesh.hpp>
 #include <iostream>
 
-ChunkSystem::ChunkSystem(Camera &cam, World &w, ThreadQueue<ChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue)
-    : camera(cam), loadQueue(lQueue), unloadQueue(uQueue), world(w), chunkMeshGenerator(w) {}
+ChunkSystem::ChunkSystem(VkResource &resource, Camera &cam, World &w, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue)
+    : vkResource(resource), camera(cam), loadQueue(lQueue), unloadQueue(uQueue), world(w), chunkMeshGenerator(w) {}
 
 std::vector<glm::ivec2> ChunkSystem::getChunksAround(glm::vec3 &position)
 {
-  static int viewDistance = 12;
+  static int viewDistance = 32;
   constexpr int chunkWorldSize = CHUNK_SIZE * VOXEL_SIZE;
 
   std::vector<glm::ivec2> coords;
@@ -87,7 +87,9 @@ void ChunkSystem::update()
     if (!newChunk.isMeshed)
     {
       auto mesh = chunkMeshGenerator.getChunkMesh(newChunk);
-      loadQueue.push(mesh);
+      GPUChunkMesh gpuMesh(&vkResource, mesh.chunkPos);
+      gpuMesh.generateRenderMesh(mesh.vertices, mesh.indices);
+      loadQueue.push(std::move(gpuMesh));
       newChunk.isMeshed = true;
 
       for (auto &neighbor : neighbors)
@@ -98,7 +100,9 @@ void ChunkSystem::update()
           continue;
 
         auto neighborMesh = chunkMeshGenerator.getChunkMesh(*chunk);
-        loadQueue.push(neighborMesh);
+        GPUChunkMesh gpuNeighborMesh(&vkResource, neighborMesh.chunkPos);
+        gpuNeighborMesh.generateRenderMesh(neighborMesh.vertices, neighborMesh.indices);
+        loadQueue.push(std::move(gpuNeighborMesh));
       }
     }
   }

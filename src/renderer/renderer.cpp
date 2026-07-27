@@ -8,7 +8,7 @@
 #include <iostream>
 #include <algorithm>
 
-Renderer::Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<ChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue)
+Renderer::Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue)
 		: window(win),
 			vkContext(win),
 			vkCommand(vkContext),
@@ -215,13 +215,15 @@ void Renderer::render()
 		chunkMeshes.erase(toUnload);
 	}
 
-	ChunkMesh toLoad;
+	GPUChunkMesh toLoad(&vkResource, {0, 0, 0});
 	while (loadQueue.tryPop(toLoad))
 	{
-		auto it = chunkMeshes.find(toLoad.chunkPos);
-		if (it == chunkMeshes.end())
-			it = chunkMeshes.try_emplace(toLoad.chunkPos, &vkResource, toLoad.chunkPos).first;
-		it->second.generateRenderMesh(toLoad.vertices, toLoad.indices);
+		chunkMeshes.insert_or_assign(toLoad.getChunkPos(), std::move(toLoad));
+
+		// auto it = chunkMeshes.find(toLoad.chunkPos);
+		// if (it == chunkMeshes.end())
+		// 	it = chunkMeshes.try_emplace(toLoad.chunkPos, &vkResource, toLoad.chunkPos).first;
+		// it->second.generateRenderMesh(toLoad.vertices, toLoad.indices);
 	}
 
 	for (auto &[pos, chunkMesh] : chunkMeshes)

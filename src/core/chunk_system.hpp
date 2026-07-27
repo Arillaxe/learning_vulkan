@@ -8,6 +8,8 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
+#include <renderer/gpu_chunk_mesh.hpp>
+#include <renderer/vk/vk_resource.hpp>
 
 struct IVec2Hash
 {
@@ -20,10 +22,11 @@ struct IVec2Hash
 class ChunkSystem
 {
 private:
+  VkResource &vkResource;
   Camera &camera;
   World &world;
   ChunkMeshGenerator chunkMeshGenerator;
-  ThreadQueue<ChunkMesh> &loadQueue;
+  ThreadQueue<GPUChunkMesh> &loadQueue;
   ThreadQueue<ChunkPos> &unloadQueue;
   std::vector<glm::ivec2> prevChunks;
   std::atomic<bool> shouldClose = false;
@@ -35,7 +38,7 @@ private:
       const std::vector<glm::ivec2> &newChunks);
 
 public:
-  ChunkSystem(Camera &cam, World &w, ThreadQueue<ChunkMesh> &loadQueue, ThreadQueue<ChunkPos> &unloadQueue);
+  ChunkSystem(VkResource &resource, Camera &cam, World &w, ThreadQueue<GPUChunkMesh> &loadQueue, ThreadQueue<ChunkPos> &unloadQueue);
 
   void run()
   {

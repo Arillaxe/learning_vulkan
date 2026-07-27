@@ -25,8 +25,10 @@ VkContext::VkContext(Window &win)
       surface(createSurface()),
       physicalDevice(pickPhysicalDevice()),
       queueIndex(pickQueueFamilyIndex()),
+      transferQueueIndex(pickTransferQueueFamilyIndex()),
       device(createDevice()),
-      queue(createQueue()) {}
+      queue(createQueue()),
+      transferQueue(createTransferQueue()) {}
 
 vk::raii::Instance VkContext::createInstance()
 {
@@ -220,6 +222,23 @@ uint32_t VkContext::pickQueueFamilyIndex()
   throw std::runtime_error("Could not find a queue for graphics and present -> terminating");
 }
 
+uint32_t VkContext::pickTransferQueueFamilyIndex()
+{
+  std::vector<vk::QueueFamilyProperties> queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
+
+  for (uint32_t qfpIndex = 0; qfpIndex < queueFamilyProperties.size(); ++qfpIndex)
+  {
+    if (
+        (queueFamilyProperties[qfpIndex].queueFlags & vk::QueueFlagBits::eTransfer) && qfpIndex != queueIndex)
+    {
+      return qfpIndex;
+      break;
+    }
+  }
+
+  throw std::runtime_error("Could not find a queue for transfer -> terminating");
+}
+
 vk::raii::Device VkContext::createDevice()
 {
   vk::StructureChain<
@@ -238,17 +257,17 @@ vk::raii::Device VkContext::createDevice()
           {.extendedDynamicState = true},
       };
 
-  float queuePriority = 0.5f;
-  vk::DeviceQueueCreateInfo deviceQueueCreateInfo{
-      .queueFamilyIndex = queueIndex,
-      .queueCount = 1,
-      .pQueuePriorities = &queuePriority,
-  };
+  float graphicsPriority = 0.5f;
+  float transferPriority = 0.4f;
+  std::array<vk::DeviceQueueCreateInfo, 2> queueInfos{{
+      {.queueFamilyIndex = queueIndex, .queueCount = 1, .pQueuePriorities = &graphicsPriority},
+      {.queueFamilyIndex = transferQueueIndex, .queueCount = 1, .pQueuePriorities = &transferPriority},
+  }};
 
   vk::DeviceCreateInfo deviceCreateInfo{
       .pNext = &featureChain.get<vk::PhysicalDeviceFeatures2>(),
-      .queueCreateInfoCount = 1,
-      .pQueueCreateInfos = &deviceQueueCreateInfo,
+      .queueCreateInfoCount = static_cast<uint32_t>(queueInfos.size()),
+      .pQueueCreateInfos = queueInfos.data(),
       .enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtension.size()),
       .ppEnabledExtensionNames = requiredDeviceExtension.data(),
   };
@@ -259,4 +278,9 @@ vk::raii::Device VkContext::createDevice()
 vk::raii::Queue VkContext::createQueue()
 {
   return vk::raii::Queue(device, queueIndex, 0);
+}
+
+vk::raii::Queue VkContext::createTransferQueue()
+{
+  return vk::raii::Queue(device, transferQueueIndex, 0);
 }

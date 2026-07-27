@@ -2,13 +2,14 @@
 
 VkCommand::VkCommand(VkContext &context)
     : vkContext(context),
-      commandPool(createCommandPool()) {}
+      graphicsCommandPool(createCommandPool(context.getQueueFamilyIndex())),
+      transferCommandPool(createCommandPool(context.getTransferQueueFamilyIndex())) {}
 
-vk::raii::CommandPool VkCommand::createCommandPool()
+vk::raii::CommandPool VkCommand::createCommandPool(uint32_t queueFamilyIndex)
 {
   vk::CommandPoolCreateInfo poolInfo{
       .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-      .queueFamilyIndex = vkContext.getQueueFamilyIndex(),
+      .queueFamilyIndex = queueFamilyIndex,
   };
 
   return vk::raii::CommandPool(vkContext.getDevice(), poolInfo);
@@ -17,7 +18,7 @@ vk::raii::CommandPool VkCommand::createCommandPool()
 vk::raii::CommandBuffers VkCommand::createCommandBuffers(uint32_t amount)
 {
   vk::CommandBufferAllocateInfo allocInfo{
-      .commandPool = commandPool,
+      .commandPool = graphicsCommandPool,
       .level = vk::CommandBufferLevel::ePrimary,
       .commandBufferCount = amount,
   };
@@ -28,7 +29,7 @@ vk::raii::CommandBuffers VkCommand::createCommandBuffers(uint32_t amount)
 vk::raii::CommandBuffer VkCommand::beginSingleTimeCommands()
 {
   vk::CommandBufferAllocateInfo allocInfo{
-      .commandPool = commandPool,
+      .commandPool = transferCommandPool,
       .level = vk::CommandBufferLevel::ePrimary,
       .commandBufferCount = 1,
   };
@@ -50,6 +51,6 @@ void VkCommand::endSingleTimeCommands(vk::raii::CommandBuffer &&commandBuffer)
       .pCommandBuffers = &*commandBuffer,
   };
 
-  vkContext.getQueue().submit(submitInfo, nullptr);
-  vkContext.getQueue().waitIdle();
+  vkContext.getTransferQueue().submit(submitInfo, nullptr);
+  vkContext.getTransferQueue().waitIdle();
 }
