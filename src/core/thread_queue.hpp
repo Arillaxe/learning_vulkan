@@ -11,7 +11,7 @@ template <typename T>
 class ThreadQueue
 {
 public:
-  void push(T value)
+  void push(T &&value)
   {
     std::lock_guard lock(m_mutex);
     m_queue.push(std::move(value));
@@ -28,6 +28,11 @@ public:
     m_queue.pop();
 
     return true;
+  }
+
+  uint32_t getSize()
+  {
+    return m_queue.size();
   }
 
 private:

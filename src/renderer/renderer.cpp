@@ -211,13 +211,15 @@ void Renderer::render()
 	PushConstants pushConstants;
 	pushConstants.model = glm::mat4(1.0f);
 
-	ChunkPos toUnload;
+	unloadQueueSize = unloadQueue.getSize();
+
 	while (unloadQueue.tryPop(toUnload))
 	{
 		chunkMeshes.erase(toUnload);
 	}
 
-	GPUChunkMesh toLoad(&vkResource, {0, 0, 0});
+	loadQueueSize = loadQueue.getSize();
+
 	while (loadQueue.tryPop(toLoad))
 	{
 		chunkMeshes.insert_or_assign(toLoad.getChunkPos(), std::move(toLoad));
@@ -228,6 +230,8 @@ void Renderer::render()
 		// it->second.generateRenderMesh(toLoad.vertices, toLoad.indices);
 	}
 
+	totalIndices = 0;
+
 	for (auto &[pos, chunkMesh] : chunkMeshes)
 	{
 		commandBuffer.bindVertexBuffers(0, *chunkMesh.getVertexBuffer(), {0});
@@ -235,6 +239,8 @@ void Renderer::render()
 		commandBuffer.pushConstants<PushConstants>(mainPipeline.getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, pushConstants);
 
 		int indicesCount = chunkMesh.getIndicesCount();
+
+		totalIndices += indicesCount;
 
 		commandBuffer.drawIndexed(indicesCount, 1, 0, 0, 0);
 	}
@@ -319,5 +325,9 @@ void Renderer::waitIdle()
 
 void Renderer::drawGUI()
 {
-	ImGui::ShowDemoWindow();
+	ImGui::Text("Chunks loaded: %d", chunkMeshes.size());
+	ImGui::Text("Load queue size: %d", loadQueueSize);
+	ImGui::Text("Unload queue size: %d", unloadQueueSize);
+	ImGui::Text("Triangles: %d", totalIndices / 3);
+	ImGui::Text("Destroyed meshes: %d", GPUChunkMesh::destroyed);
 }

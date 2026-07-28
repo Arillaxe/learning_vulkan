@@ -1,6 +1,8 @@
 #include <renderer/gpu_chunk_mesh.hpp>
 #include <iostream>
 
+int GPUChunkMesh::destroyed = 0;
+
 GPUChunkMesh::GPUChunkMesh(VkResource *resource, ChunkPos pos) : vkResource(resource), chunkPos(pos) {}
 
 void GPUChunkMesh::generateRenderMesh(std::vector<Vertex> &vertices, std::vector<uint32_t> &indices)

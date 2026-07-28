@@ -11,7 +11,7 @@ ChunkSystem::ChunkSystem(VkResource &resource, Camera &cam, World &w, ThreadQueu
 
 std::vector<glm::ivec2> ChunkSystem::getChunksAround(glm::vec3 &position)
 {
-  static int viewDistance = 32;
+  static int viewDistance = 10;
   constexpr int chunkWorldSize = CHUNK_SIZE * VOXEL_SIZE;
 
   std::vector<glm::ivec2> coords;
@@ -70,7 +70,7 @@ void ChunkSystem::update()
 
     chunk->isMeshed = false;
 
-    unloadQueue.push(chunk->pos);
+    unloadQueue.push(std::move(chunk->pos));
   }
 
   static std::array<glm::ivec2, 4> neighbors = {{
@@ -80,31 +80,44 @@ void ChunkSystem::update()
       {0, 1},
   }};
 
+  // Load every chunk in view before meshing any of them, so face culling at chunk
+  // borders sees the real neighbor voxels instead of empty space.
+  std::vector<glm::ivec2> unmeshedChunks;
+
   for (auto &coord : chunks)
   {
-    auto &newChunk = world.loadChunk(coord.x, coord.y);
+    auto &chunk = world.loadChunk(coord.x, coord.y);
 
-    if (!newChunk.isMeshed)
+    if (!chunk.isMeshed)
+      unmeshedChunks.push_back(coord);
+  }
+
+  std::unordered_set<glm::ivec2, IVec2Hash> dirtyChunks(unmeshedChunks.begin(), unmeshedChunks.end());
+
+  // A neighbor meshed on an earlier tick has stale border faces now that a chunk
+  // appeared next to it.
+  for (auto &coord : unmeshedChunks)
+  {
+    for (auto &neighbor : neighbors)
     {
-      auto mesh = chunkMeshGenerator.getChunkMesh(newChunk);
-      GPUChunkMesh gpuMesh(&vkResource, mesh.chunkPos);
-      gpuMesh.generateRenderMesh(mesh.vertices, mesh.indices);
-      loadQueue.push(std::move(gpuMesh));
-      newChunk.isMeshed = true;
+      glm::ivec2 neighborCoord = coord + neighbor;
+      auto *chunk = world.getChunk(neighborCoord.x, neighborCoord.y);
 
-      for (auto &neighbor : neighbors)
-      {
-        auto *chunk = world.getChunk(coord.x + neighbor.x, coord.y + neighbor.y);
-
-        if (!chunk || !chunk->isMeshed)
-          continue;
-
-        auto neighborMesh = chunkMeshGenerator.getChunkMesh(*chunk);
-        GPUChunkMesh gpuNeighborMesh(&vkResource, neighborMesh.chunkPos);
-        gpuNeighborMesh.generateRenderMesh(neighborMesh.vertices, neighborMesh.indices);
-        loadQueue.push(std::move(gpuNeighborMesh));
-      }
+      if (chunk && chunk->isMeshed)
+        dirtyChunks.insert(neighborCoord);
     }
+  }
+
+  for (auto &coord : dirtyChunks)
+  {
+    auto *chunk = world.getChunk(coord.x, coord.y);
+
+    auto mesh = chunkMeshGenerator.getChunkMesh(*chunk);
+    GPUChunkMesh gpuMesh(&vkResource, mesh.chunkPos);
+    gpuMesh.generateRenderMesh(mesh.vertices, mesh.indices);
+    loadQueue.push(std::move(gpuMesh));
+
+    chunk->isMeshed = true;
   }
 
   prevChunks = std::move(chunks);

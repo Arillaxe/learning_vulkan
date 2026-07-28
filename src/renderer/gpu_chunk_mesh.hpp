@@ -18,6 +18,20 @@ private:
 
 public:
   GPUChunkMesh(VkResource *resource, ChunkPos pos);
+  GPUChunkMesh() {}
+
+  static int destroyed;
+
+  ~GPUChunkMesh()
+  {
+    destroyed++;
+  }
+
+  GPUChunkMesh(GPUChunkMesh &&) = default;
+  GPUChunkMesh &operator=(GPUChunkMesh &&) = default;
+
+  GPUChunkMesh(const GPUChunkMesh &) = delete;
+  GPUChunkMesh &operator=(const GPUChunkMesh &) = delete;
 
   vk::raii::Buffer &getVertexBuffer() { return vertexBuffer; }
   vk::raii::Buffer &getIndexBuffer() { return indexBuffer; }

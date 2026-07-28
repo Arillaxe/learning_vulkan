@@ -33,7 +33,12 @@ private:
   std::unordered_map<ChunkPos, GPUChunkMesh, ChunkPosHash> chunkMeshes;
   ThreadQueue<GPUChunkMesh> &loadQueue;
   ThreadQueue<ChunkPos> &unloadQueue;
+  ChunkPos toUnload;
+  GPUChunkMesh toLoad;
   GUI gui;
+  uint32_t loadQueueSize;
+  uint32_t unloadQueueSize;
+  uint32_t totalIndices;
 
   void transition_image_layout(
       vk::raii::CommandBuffer &commandBuffer,
