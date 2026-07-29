@@ -111,7 +111,7 @@ std::vector<const char *> VkContext::getRequiredInstanceExtensions()
 
 vk::raii::DebugUtilsMessengerEXT VkContext::createDebugMessenger()
 {
-  if (enableValidationLayers)
+  if (!enableValidationLayers)
     return nullptr;
 
   vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |

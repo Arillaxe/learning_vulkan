@@ -90,10 +90,10 @@ ChunkMesh ChunkMeshGenerator::getChunkMesh(Chunk &chunk)
         }
 
         uint32_t baseVertex = vertices.size();
-        glm::vec3 x1 = {pos.x * CHUNK_SIZE + x + 1, pos.y * CHUNK_SIZE + y, pos.z * CHUNK_SIZE + offset};
-        glm::vec3 x2 = {pos.x * CHUNK_SIZE + x + 1, pos.y * CHUNK_SIZE + y, pos.z * CHUNK_SIZE + offset + height};
-        glm::vec3 y1 = {pos.x * CHUNK_SIZE + x + 1, pos.y * CHUNK_SIZE + y + width, pos.z * CHUNK_SIZE + offset};
-        glm::vec3 y2 = {pos.x * CHUNK_SIZE + x + 1, pos.y * CHUNK_SIZE + y + width, pos.z * CHUNK_SIZE + offset + height};
+        glm::vec3 x1 = {pos.x * CHUNK_SIZE + x + 1, pos.y * CHUNK_SIZE + y, pos.z * CHUNK_SIZE + (int)offset};
+        glm::vec3 x2 = {pos.x * CHUNK_SIZE + x + 1, pos.y * CHUNK_SIZE + y, pos.z * CHUNK_SIZE + (int)offset + (int)height};
+        glm::vec3 y1 = {pos.x * CHUNK_SIZE + x + 1, pos.y * CHUNK_SIZE + y + (int)width, pos.z * CHUNK_SIZE + (int)offset};
+        glm::vec3 y2 = {pos.x * CHUNK_SIZE + x + 1, pos.y * CHUNK_SIZE + y + (int)width, pos.z * CHUNK_SIZE + (int)offset + (int)height};
 
         vertices.push_back({x1 * (float)VOXEL_SIZE});
         vertices.push_back({x2 * (float)VOXEL_SIZE});
