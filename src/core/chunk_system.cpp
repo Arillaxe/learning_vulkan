@@ -113,6 +113,11 @@ void ChunkSystem::update()
     auto *chunk = world.getChunk(coord.x, coord.y);
 
     auto mesh = chunkMeshGenerator.getChunkMesh(*chunk);
+    if (mesh.vertices.size() == 0)
+    {
+      unloadQueue.push(std::move(mesh.chunkPos));
+      continue;
+    }
     GPUChunkMesh gpuMesh(&vkResource, mesh.chunkPos);
     gpuMesh.generateRenderMesh(mesh.vertices, mesh.indices);
     loadQueue.push(std::move(gpuMesh));

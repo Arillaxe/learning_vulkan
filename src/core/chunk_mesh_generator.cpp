@@ -5,24 +5,37 @@ ChunkMeshGenerator::ChunkMeshGenerator(World &w) : world(w) {}
 
 BinaryGrids ChunkMeshGenerator::getBinaryGrids(Chunk &chunk)
 {
-  BinaryGrids grids;
+  BinaryGrids grids{};
 
   const auto &voxels = chunk.voxels;
+  const auto &pos = chunk.pos;
 
-  for (int i = 0; i < CHUNK_SIZE; i++)
+  for (int x = 0; x < CHUNK_SIZE; x++)
   {
-    for (int j = 0; j < CHUNK_SIZE; j++)
+    for (int y = 0; y < CHUNK_SIZE; y++)
     {
-      for (int k = 0; k < CHUNK_SIZE; k++)
+      for (int z = 0; z < CHUNK_SIZE; z++)
       {
-        auto &voxel = voxels[i][j][k];
+        auto &voxel = voxels[x][y][z];
 
         if (voxel.type == 0)
           continue;
 
-        grids.xy[i][j] |= (1u << k);
-        grids.xz[i][k] |= (1u << j);
-        grids.yz[j][k] |= (1u << i);
+        grids.xy[x + 1][y + 1] |= (1u << (z + 1));
+        grids.xz[x + 1][z + 1] |= (1u << (y + 1));
+        grids.yz[y + 1][z + 1] |= (1u << (x + 1));
+      }
+    }
+  }
+
+  if (Chunk *east = world.getChunk(pos.x + 1, pos.z))
+  {
+    for (int y = 0; y < CHUNK_SIZE; y++)
+    {
+      for (int z = 0; z < CHUNK_SIZE; z++)
+      {
+        if (east->voxels[0][y][z].type != 0)
+          grids.yz[y + 1][z + 1] |= (1u << (CHUNK_SIZE + 1));
       }
     }
   }
@@ -45,8 +58,8 @@ ChunkMesh ChunkMeshGenerator::getChunkMesh(Chunk &chunk)
   {
     for (int z = 0; z < CHUNK_SIZE; z++)
     {
-      uint32_t row = occupancy.yz[y][z];
-      poxXfaces[y][z] = row & ~(row >> 1);
+      uint32_t row = occupancy.yz[y + 1][z + 1];
+      poxXfaces[y + 1][z + 1] = row & ~(row >> 1);
     }
   }
 
@@ -56,12 +69,12 @@ ChunkMesh ChunkMeshGenerator::getChunkMesh(Chunk &chunk)
   {
     for (int z = 0; z < CHUNK_SIZE; z++)
     {
-      uint32_t row = poxXfaces[y][z];
+      uint32_t row = poxXfaces[y + 1][z + 1];
 
       while (row)
       {
         uint32_t x = std::countr_zero(row);
-        poxXfacesSwizzled[y][x] |= (1u << z);
+        poxXfacesSwizzled[y + 1][x] |= (1u << z);
         row &= row - 1;
       }
     }
@@ -71,7 +84,7 @@ ChunkMesh ChunkMeshGenerator::getChunkMesh(Chunk &chunk)
   {
     for (int x = 0; x < CHUNK_SIZE; x++)
     {
-      uint32_t &row = poxXfacesSwizzled[y][x];
+      uint32_t &row = poxXfacesSwizzled[y + 1][x + 1];
 
       while (row > 0)
       {
@@ -83,10 +96,10 @@ ChunkMesh ChunkMeshGenerator::getChunkMesh(Chunk &chunk)
         uint32_t width = 1;
         for (int i = y + 1; i < CHUNK_SIZE; i++)
         {
-          if ((poxXfacesSwizzled[i][x] & mask) != mask)
+          if ((poxXfacesSwizzled[i + 1][x + 1] & mask) != mask)
             break;
           width++;
-          poxXfacesSwizzled[i][x] &= ~mask;
+          poxXfacesSwizzled[i + 1][x + 1] &= ~mask;
         }
 
         uint32_t baseVertex = vertices.size();

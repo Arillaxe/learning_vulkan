@@ -5,7 +5,7 @@
 #include <core/chunk.hpp>
 #include <core/world.hpp>
 
-using BinaryGrid = std::array<std::array<uint32_t, CHUNK_SIZE>, CHUNK_SIZE>;
+using BinaryGrid = std::array<std::array<uint32_t, CHUNK_SIZE + 2>, CHUNK_SIZE + 2>;
 
 struct BinaryGrids
 {
