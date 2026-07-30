@@ -16,6 +16,7 @@
 #include <thread>
 #include <core/chunk_system.hpp>
 #include <renderer/gpu_chunk_mesh.hpp>
+#include <core/raycast.hpp>
 
 class App
 {
@@ -59,12 +60,39 @@ public:
     chunkSystemThread = std::thread(&ChunkSystem::run, &chunkSystem);
   }
 
+  void gameplay()
+  {
+    static bool wasPressed = false;
+
+    if (glfwGetMouseButton(window.getGLFWWindowHandle(), GLFW_MOUSE_BUTTON_1) == GLFW_PRESS && !wasPressed)
+    {
+      wasPressed = true;
+
+      glm::vec3 forward = camera.rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+
+      auto hit = raycast(world, camera.position, forward, 8.0f);
+
+      if (hit.hit)
+      {
+        world.getVoxel(hit.voxel.x,
+                       hit.voxel.y,
+                       hit.voxel.z)
+            ->type = 0;
+      }
+    }
+    else if (glfwGetMouseButton(window.getGLFWWindowHandle(), GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE)
+    {
+      wasPressed = false;
+    }
+  }
+
   void run()
   {
     while (!window.shouldClose())
     {
       window.pollEvents();
       input.pollEvents();
+      gameplay();
       renderer.render();
     }
 
