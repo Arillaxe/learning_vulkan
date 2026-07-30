@@ -56,23 +56,10 @@ std::vector<glm::ivec2> ChunkSystem::getChunksDiff(
 
 void ChunkSystem::update()
 {
-  // glm::vec3 &cameraPosition = camera.position;
-  glm::vec3 cameraPosition = glm::vec3(0, 0, 0);
+  glm::vec3 &cameraPosition = camera.position;
+  // glm::vec3 cameraPosition = glm::vec3(0, 0, 0);
 
   auto chunks = getChunksAround(cameraPosition);
-  auto chunksToUnload = getChunksDiff(chunks, prevChunks);
-
-  for (auto &coord : chunksToUnload)
-  {
-    auto *chunk = world.getChunk(coord.x, coord.y);
-
-    if (!chunk)
-      continue;
-
-    chunk->isMeshed = false;
-
-    unloadQueue.push(std::move(chunk->pos));
-  }
 
   static std::array<glm::ivec2, 4> neighbors = {{
       {-1, 0},
@@ -81,55 +68,34 @@ void ChunkSystem::update()
       {0, 1},
   }};
 
-  // Load every chunk in view before meshing any of them, so face culling at chunk
-  // borders sees the real neighbor voxels instead of empty space.
-  std::vector<glm::ivec2> unmeshedChunks;
-
   for (auto &coord : chunks)
   {
     auto &chunk = world.loadChunk(coord.x, coord.y);
-
-    if (!chunk.isMeshed)
-      unmeshedChunks.push_back(coord);
   }
 
-  std::unordered_set<glm::ivec2, IVec2Hash> dirtyChunks(unmeshedChunks.begin(), unmeshedChunks.end());
+  std::vector<Vertex> worldVertices;
+  std::vector<uint32_t> worldIndices;
 
-  // A neighbor meshed on an earlier tick has stale border faces now that a chunk
-  // appeared next to it.
-  for (auto &coord : unmeshedChunks)
-  {
-    for (auto &neighbor : neighbors)
-    {
-      glm::ivec2 neighborCoord = coord + neighbor;
-      auto *chunk = world.getChunk(neighborCoord.x, neighborCoord.y);
-
-      if (chunk && chunk->isMeshed)
-        dirtyChunks.insert(neighborCoord);
-    }
-  }
-
-  for (auto &coord : dirtyChunks)
+  for (auto &coord : chunks)
   {
     auto *chunk = world.getChunk(coord.x, coord.y);
-
-    bool hadMesh = chunk->isMeshed;
-
     auto mesh = chunkMeshGenerator.getChunkMesh(*chunk);
-    if (mesh.vertices.empty())
+
+    uint32_t baseIndex = worldVertices.size();
+    worldVertices.insert(worldVertices.end(), mesh.vertices.begin(), mesh.vertices.end());
+
+    for (auto index : mesh.indices)
     {
-      if (hadMesh)
-      {
-        unloadQueue.push(std::move(mesh.chunkPos));
-      }
-      continue;
+      worldIndices.push_back(baseIndex + index);
     }
-    GPUChunkMesh gpuMesh(&vkResource, mesh.chunkPos);
-    gpuMesh.generateRenderMesh(mesh.vertices, mesh.indices);
-    loadQueue.push(std::move(gpuMesh));
 
     chunk->isMeshed = true;
   }
 
-  prevChunks = std::move(chunks);
+  if (worldVertices.size() == 0)
+    return;
+
+  GPUChunkMesh gpuMesh(&vkResource, {0});
+  gpuMesh.generateRenderMesh(worldVertices, worldIndices);
+  loadQueue.push(std::move(gpuMesh));
 }

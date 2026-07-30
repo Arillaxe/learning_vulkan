@@ -226,13 +226,13 @@ void Renderer::render()
 	totalIndices = 0;
 
 	float aspectRatio = static_cast<float>(vkSwapchain.getExtent().width) / static_cast<float>(vkSwapchain.getExtent().height);
-	FrustumCuller culler(camera, aspectRatio);
+	// FrustumCuller culler(camera, aspectRatio);
 
 	for (auto &[pos, chunkMesh] : chunkMeshes)
 	{
 
-		if (!culler.isVisible(pos))
-			continue;
+		// if (!culler.isVisible(pos))
+		// 	continue;
 
 		commandBuffer.bindVertexBuffers(0, *chunkMesh.getVertexBuffer(), {0});
 		commandBuffer.bindIndexBuffer(*chunkMesh.getIndexBuffer(), 0, vk::IndexTypeValue<uint32_t>::value);

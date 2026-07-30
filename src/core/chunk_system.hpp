@@ -28,8 +28,8 @@ private:
   ChunkMeshGenerator chunkMeshGenerator;
   ThreadQueue<GPUChunkMesh> &loadQueue;
   ThreadQueue<ChunkPos> &unloadQueue;
-  std::vector<glm::ivec2> prevChunks;
   std::atomic<bool> shouldClose = false;
+  float aspectRatio;
 
   void update();
   std::vector<glm::ivec2> getChunksAround(glm::vec3 &position);
@@ -38,7 +38,7 @@ private:
       const std::vector<glm::ivec2> &newChunks);
 
 public:
-  ChunkSystem(VkResource &resource, Camera &cam, World &w, ThreadQueue<GPUChunkMesh> &loadQueue, ThreadQueue<ChunkPos> &unloadQueue);
+  ChunkSystem(VkResource &resource, Camera &cam, World &w, ThreadQueue<GPUChunkMesh> &loadQueue, ThreadQueue<ChunkPos> &unloadQueue, float aspect);
 
   void run()
   {
