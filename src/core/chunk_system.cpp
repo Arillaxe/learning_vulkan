@@ -11,7 +11,7 @@ ChunkSystem::ChunkSystem(VkResource &resource, Camera &cam, World &w, ThreadQueu
 
 std::vector<glm::ivec2> ChunkSystem::getChunksAround(glm::vec3 &position)
 {
-  static int viewDistance = 10;
+  static int viewDistance = 32;
   constexpr int chunkWorldSize = CHUNK_SIZE * VOXEL_SIZE;
 
   std::vector<glm::ivec2> coords;

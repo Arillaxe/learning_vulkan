@@ -39,6 +39,8 @@ private:
   uint32_t loadQueueSize;
   uint32_t unloadQueueSize;
   uint32_t totalIndices;
+  double cpuMs;
+  double gpuMs;
 
   void transition_image_layout(
       vk::raii::CommandBuffer &commandBuffer,

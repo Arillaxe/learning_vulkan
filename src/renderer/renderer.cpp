@@ -7,7 +7,7 @@
 #include <core/chunk.hpp>
 #include <iostream>
 #include <algorithm>
-#include "renderer.hpp"
+#include <core/frustum_culler.hpp>
 
 Renderer::Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue)
 		: window(win),
@@ -83,12 +83,10 @@ void Renderer::render()
 																																			sizeof(uint64_t),		// stride
 																																			vk::QueryResultFlagBits::e64);
 
-	double gpuMs =
+	gpuMs =
 			(timestamps[1] - timestamps[0]) *
 			vkContext.getPhysicalDevice().getProperties().limits.timestampPeriod /
 			1'000'000.0;
-
-	//   std::cout << gpuMs << std::endl;
 
 	uint32_t imageIndex = vkSwapchain.acquireNextImage();
 	auto &commandBuffer = commandBuffers[0];
@@ -223,17 +221,19 @@ void Renderer::render()
 	while (loadQueue.tryPop(toLoad))
 	{
 		chunkMeshes.insert_or_assign(toLoad.getChunkPos(), std::move(toLoad));
-
-		// auto it = chunkMeshes.find(toLoad.chunkPos);
-		// if (it == chunkMeshes.end())
-		// 	it = chunkMeshes.try_emplace(toLoad.chunkPos, &vkResource, toLoad.chunkPos).first;
-		// it->second.generateRenderMesh(toLoad.vertices, toLoad.indices);
 	}
 
 	totalIndices = 0;
 
+	float aspectRatio = static_cast<float>(vkSwapchain.getExtent().width) / static_cast<float>(vkSwapchain.getExtent().height);
+	FrustumCuller culler(camera, aspectRatio);
+
 	for (auto &[pos, chunkMesh] : chunkMeshes)
 	{
+
+		if (!culler.isVisible(pos))
+			continue;
+
 		commandBuffer.bindVertexBuffers(0, *chunkMesh.getVertexBuffer(), {0});
 		commandBuffer.bindIndexBuffer(*chunkMesh.getIndexBuffer(), 0, vk::IndexTypeValue<uint32_t>::value);
 		commandBuffer.pushConstants<PushConstants>(mainPipeline.getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, pushConstants);
@@ -312,10 +312,7 @@ void Renderer::render()
 
 	auto end = std::chrono::high_resolution_clock::now();
 
-	double cpuMs =
-			std::chrono::duration<double, std::milli>(end - start).count();
-
-	//   std::cout << cpuMs << std::endl;
+	cpuMs = std::chrono::duration<double, std::milli>(end - start).count();
 }
 
 void Renderer::waitIdle()
@@ -325,6 +322,8 @@ void Renderer::waitIdle()
 
 void Renderer::drawGUI()
 {
+	ImGui::Text("CPU frame: %.2fms", cpuMs);
+	ImGui::Text("GPU frame: %.2fms", gpuMs);
 	ImGui::Text("Chunks loaded: %d", chunkMeshes.size());
 	ImGui::Text("Load queue size: %d", loadQueueSize);
 	ImGui::Text("Unload queue size: %d", unloadQueueSize);
