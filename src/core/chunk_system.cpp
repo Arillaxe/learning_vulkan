@@ -70,7 +70,7 @@ void ChunkSystem::update()
 
   for (auto &coord : chunks)
   {
-    auto &chunk = world.loadChunk(coord.x, coord.y);
+    world.loadChunk(coord.x, coord.y);
   }
 
   std::vector<Vertex> worldVertices;
@@ -79,7 +79,14 @@ void ChunkSystem::update()
   for (auto &coord : chunks)
   {
     auto *chunk = world.getChunk(coord.x, coord.y);
-    auto mesh = chunkMeshGenerator.getChunkMesh(*chunk);
+
+    if (!chunk->isMeshed)
+    {
+      chunkMeshes.insert_or_assign(chunk->pos, chunkMeshGenerator.getChunkMesh(*chunk));
+      chunk->isMeshed = true;
+    }
+
+    auto &mesh = chunkMeshes.find(chunk->pos)->second;
 
     uint32_t baseIndex = worldVertices.size();
     worldVertices.insert(worldVertices.end(), mesh.vertices.begin(), mesh.vertices.end());
@@ -88,8 +95,6 @@ void ChunkSystem::update()
     {
       worldIndices.push_back(baseIndex + index);
     }
-
-    chunk->isMeshed = true;
   }
 
   if (worldVertices.size() == 0)

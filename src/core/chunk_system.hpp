@@ -29,6 +29,7 @@ private:
   ThreadQueue<GPUChunkMesh> &loadQueue;
   ThreadQueue<ChunkPos> &unloadQueue;
   std::atomic<bool> shouldClose = false;
+  std::unordered_map<ChunkPos, ChunkMesh, ChunkPosHash> chunkMeshes;
 
   void update();
   std::vector<glm::ivec2> getChunksAround(glm::vec3 &position);

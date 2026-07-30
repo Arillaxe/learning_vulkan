@@ -17,6 +17,7 @@
 #include <core/chunk_system.hpp>
 #include <renderer/gpu_chunk_mesh.hpp>
 #include <core/raycast.hpp>
+#include <core/math.hpp>
 
 class App
 {
@@ -78,6 +79,12 @@ public:
                        hit.voxel.y,
                        hit.voxel.z)
             ->type = 0;
+        const int chunkX = floorDiv(hit.voxel.x, CHUNK_SIZE);
+        const int chunkZ = floorDiv(hit.voxel.z, CHUNK_SIZE);
+
+        auto *chunk = world.getChunk(chunkX, chunkZ);
+
+        chunk->isMeshed = false;
       }
     }
     else if (glfwGetMouseButton(window.getGLFWWindowHandle(), GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE)
