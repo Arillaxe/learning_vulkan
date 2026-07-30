@@ -56,7 +56,8 @@ std::vector<glm::ivec2> ChunkSystem::getChunksDiff(
 
 void ChunkSystem::update()
 {
-  glm::vec3 &cameraPosition = camera.position;
+  // glm::vec3 &cameraPosition = camera.position;
+  glm::vec3 cameraPosition = glm::vec3(0, 0, 0);
 
   auto chunks = getChunksAround(cameraPosition);
   auto chunksToUnload = getChunksDiff(chunks, prevChunks);
