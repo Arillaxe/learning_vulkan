@@ -14,7 +14,7 @@ private:
   Window &window;
   VkContext &vkContext;
   VkResource &vkResource;
-  VkSynchronization &vkSynchronization;
+  std::vector<VkSynchronization> &vkSynchronization;
   vk::SurfaceCapabilitiesKHR capabilities;
   vk::Extent2D extent;
   vk::SurfaceFormatKHR surfaceFormat;
@@ -36,15 +36,15 @@ private:
   vk::PresentModeKHR getPresentMode();
   vk::raii::SwapchainKHR createSwapchain(const vk::SwapchainKHR &oldSwapchain);
   std::vector<vk::raii::ImageView> createImageViews();
-  vk::Format findDepthFormat();
   vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
 public:
-  VkSwapchain(VkContext &context, Window &win, VkResource &resource, VkSynchronization &synchronization);
+  VkSwapchain(VkContext &context, Window &win, VkResource &resource, std::vector<VkSynchronization> &synchronization);
 
   void recreateSwapchain();
-  uint32_t acquireNextImage();
+  uint32_t acquireNextImage(uint32_t frameIndex);
 
+  vk::Format findDepthFormat();
   vk::SurfaceFormatKHR &getSurfaceFormat() { return surfaceFormat; }
   vk::raii::SwapchainKHR &getSwapchain() { return swapchain; }
   vk::Extent2D &getExtent() { return extent; }

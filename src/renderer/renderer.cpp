@@ -14,20 +14,25 @@ Renderer::Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<GPUChunk
 			vkContext(win),
 			vkCommand(vkContext),
 			vkResource(vkContext, vkCommand),
-			vkSynchronization(vkContext),
 			vkSwapchain(vkContext, win, vkResource, vkSynchronization),
 			scene(_scene),
-			commandBuffers(vkCommand.createCommandBuffers(1)),
+			commandBuffers(vkCommand.createCommandBuffers(MAX_FRAMES_IN_FLIGHT)),
 			mainPipeline(vkContext, vkSwapchain, vkResource),
 			camera(cam),
 			queryPool(
 					vkContext.getDevice(),
 					vk::QueryPoolCreateInfo{}
 							.setQueryType(vk::QueryType::eTimestamp)
-							.setQueryCount(2)),
+							.setQueryCount(MAX_FRAMES_IN_FLIGHT * 2)),
 			loadQueue(lQueue),
 			unloadQueue(uQueue),
-			gui(window, vkContext, vkResource, vkSwapchain) {}
+			gui(window, vkContext, vkResource, vkSwapchain)
+{
+	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		vkSynchronization.emplace_back(vkContext);
+	}
+}
 
 void Renderer::transition_image_layout(
 		vk::raii::CommandBuffer &commandBuffer,
@@ -70,26 +75,24 @@ void Renderer::transition_image_layout(
 
 void Renderer::render()
 {
+	static bool first[MAX_FRAMES_IN_FLIGHT] = {true, true};
 	auto start = std::chrono::high_resolution_clock::now();
 
-	vkSynchronization.waitDrawFence();
+	vkSynchronization[frameIndex].waitDrawFence();
 	std::array<uint64_t, 2> timestamps{};
 
-	auto queryPoolResult = (*vkContext.getDevice()).getQueryPoolResults(*queryPool,
-																																			0,									// first query
-																																			2,									// query count
-																																			sizeof(timestamps), // data size
-																																			timestamps.data(),	// data
-																																			sizeof(uint64_t),		// stride
-																																			vk::QueryResultFlagBits::e64);
+	if (!first[frameIndex])
+	{
+		auto queryPoolResult = (*vkContext.getDevice()).getQueryPoolResults(*queryPool, frameIndex * 2, 2, sizeof(timestamps), timestamps.data(), sizeof(uint64_t), vk::QueryResultFlagBits::e64);
 
-	gpuMs =
-			(timestamps[1] - timestamps[0]) *
-			vkContext.getPhysicalDevice().getProperties().limits.timestampPeriod /
-			1'000'000.0;
+		gpuMs =
+				(timestamps[1] - timestamps[0]) *
+				vkContext.getPhysicalDevice().getProperties().limits.timestampPeriod /
+				1'000'000.0;
+	}
 
-	uint32_t imageIndex = vkSwapchain.acquireNextImage();
-	auto &commandBuffer = commandBuffers[0];
+	uint32_t imageIndex = vkSwapchain.acquireNextImage(frameIndex);
+	auto &commandBuffer = commandBuffers[frameIndex];
 
 	commandBuffer.reset();
 
@@ -97,8 +100,8 @@ void Renderer::render()
 
 	commandBuffer.begin({});
 
-	commandBuffer.resetQueryPool(*queryPool, 0, 2);
-	commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, *queryPool, 0);
+	commandBuffer.resetQueryPool(*queryPool, frameIndex * 2, 2);
+	commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, *queryPool, frameIndex * 2);
 
 	transition_image_layout(
 			commandBuffer,
@@ -268,7 +271,7 @@ void Renderer::render()
 			vk::PipelineStageFlagBits2::eBottomOfPipe,
 			vk::ImageAspectFlagBits::eColor);
 
-	commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, *queryPool, 1);
+	commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, *queryPool, frameIndex * 2 + 1);
 
 	commandBuffer.end();
 
@@ -279,19 +282,19 @@ void Renderer::render()
 	vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 	const vk::SubmitInfo submitInfo{
 			.waitSemaphoreCount = 1,
-			.pWaitSemaphores = &*vkSynchronization.getPresentCompleteSemaphore(),
+			.pWaitSemaphores = &*vkSynchronization[frameIndex].getPresentCompleteSemaphore(),
 			.pWaitDstStageMask = &waitDestinationStageMask,
 			.commandBufferCount = 1,
 			.pCommandBuffers = &*commandBuffer,
 			.signalSemaphoreCount = 1,
-			.pSignalSemaphores = &*vkSynchronization.getRenderFinishedSemaphore(),
+			.pSignalSemaphores = &*vkSynchronization[frameIndex].getRenderFinishedSemaphore(),
 	};
 
-	vkContext.getQueue().submit(submitInfo, *vkSynchronization.getDrawFence());
+	vkContext.getQueue().submit(submitInfo, *vkSynchronization[frameIndex].getDrawFence());
 
 	const vk::PresentInfoKHR presentInfoKHR{
 			.waitSemaphoreCount = 1,
-			.pWaitSemaphores = &*vkSynchronization.getRenderFinishedSemaphore(),
+			.pWaitSemaphores = &*vkSynchronization[frameIndex].getRenderFinishedSemaphore(),
 			.swapchainCount = 1,
 			.pSwapchains = &*vkSwapchain.getSwapchain(),
 			.pImageIndices = &imageIndex,
@@ -309,6 +312,9 @@ void Renderer::render()
 	{
 		assert(result == vk::Result::eSuccess);
 	}
+
+	first[frameIndex] = false;
+	frameIndex = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
 	auto end = std::chrono::high_resolution_clock::now();
 

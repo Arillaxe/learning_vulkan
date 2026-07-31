@@ -35,6 +35,13 @@ public:
     return m_queue.size();
   }
 
+  void clear()
+  {
+    std::lock_guard lock(m_mutex);
+    std::queue<T> empty;
+    std::swap(m_queue, empty);
+  }
+
 private:
   std::mutex m_mutex;
   std::queue<T> m_queue;

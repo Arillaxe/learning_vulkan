@@ -44,9 +44,13 @@ public:
 
     ImGui_ImplGlfw_InitForVulkan(window.getGLFWWindowHandle(), true);
 
+    vk::Format colorFormat = swapchain.getSurfaceFormat().format;
+    vk::Format depthFormat = swapchain.findDepthFormat();
+
     vk::PipelineRenderingCreateInfo renderingInfo{
         .colorAttachmentCount = 1,
-        .pColorAttachmentFormats = &swapchain.getSurfaceFormat().format,
+        .pColorAttachmentFormats = &colorFormat,
+        .depthAttachmentFormat = depthFormat,
     };
 
     ImGui_ImplVulkan_PipelineInfo pipelineInfo;

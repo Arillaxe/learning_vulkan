@@ -194,6 +194,7 @@ bool VkContext::isDeviceSuitable(vk::raii::PhysicalDevice const &physicalDevice)
       features.template get<vk::PhysicalDeviceFeatures2>().features.samplerAnisotropy &&
       features.template get<vk::PhysicalDeviceFeatures2>().features.sampleRateShading &&
       features.template get<vk::PhysicalDeviceFeatures2>().features.vertexPipelineStoresAndAtomics &&
+      features.template get<vk::PhysicalDeviceFeatures2>().features.fillModeNonSolid &&
       features.template get<vk::PhysicalDeviceVulkan11Features>().shaderDrawParameters &&
       features.template get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering &&
       features.template get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState;
@@ -249,6 +250,7 @@ vk::raii::Device VkContext::createDevice()
       featureChain = {
           {.features = {
                .sampleRateShading = true,
+               .fillModeNonSolid = true,
                .samplerAnisotropy = true,
                .vertexPipelineStoresAndAtomics = true,
            }},

@@ -108,6 +108,9 @@ public:
     chunkSystemThread.join();
 
     renderer.waitIdle();
+    // GPUChunkMeshes in the queue own VkBuffer/VkDeviceMemory; destroy them
+    // before Renderer (and the VkDevice) goes away.
+    loadQueue.clear();
   }
 };
 

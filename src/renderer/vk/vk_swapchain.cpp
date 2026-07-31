@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <cassert>
 
-VkSwapchain::VkSwapchain(VkContext &context, Window &win, VkResource &resource, VkSynchronization &synchronization)
+VkSwapchain::VkSwapchain(VkContext &context, Window &win, VkResource &resource, std::vector<VkSynchronization> &synchronization)
     : vkContext(context),
       vkResource(resource),
       vkSynchronization(synchronization),
@@ -182,15 +182,15 @@ void VkSwapchain::recreateSwapchain()
   colorImageView = vkResource.createImageView(colorImage, surfaceFormat.format, vk::ImageAspectFlagBits::eColor, 1);
 }
 
-uint32_t VkSwapchain::acquireNextImage()
+uint32_t VkSwapchain::acquireNextImage(uint32_t frameIndex)
 {
-  auto [result, imageIndex] = swapchain.acquireNextImage(UINT64_MAX, *vkSynchronization.getPresentCompleteSemaphore(), nullptr);
+  auto [result, imageIndex] = swapchain.acquireNextImage(UINT64_MAX, *vkSynchronization[frameIndex].getPresentCompleteSemaphore(), nullptr);
 
   if (result == vk::Result::eErrorOutOfDateKHR)
   {
     recreateSwapchain();
 
-    return acquireNextImage();
+    return acquireNextImage(frameIndex);
   }
 
   if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)

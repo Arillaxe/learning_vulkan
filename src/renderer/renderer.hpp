@@ -16,6 +16,8 @@
 #include <unordered_map>
 #include <renderer/gui.hpp>
 
+constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+
 class Renderer
 {
 private:
@@ -23,7 +25,7 @@ private:
   VkContext vkContext;
   VkCommand vkCommand;
   VkResource vkResource;
-  VkSynchronization vkSynchronization;
+  std::vector<VkSynchronization> vkSynchronization;
   VkSwapchain vkSwapchain;
   Scene &scene;
   vk::raii::CommandBuffers commandBuffers;
@@ -41,6 +43,7 @@ private:
   uint32_t totalIndices;
   double cpuMs;
   double gpuMs;
+  uint32_t frameIndex = 0;
 
   void transition_image_layout(
       vk::raii::CommandBuffer &commandBuffer,
