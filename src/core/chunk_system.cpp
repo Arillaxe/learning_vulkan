@@ -1,36 +1,73 @@
 #include <core/chunk_system.hpp>
-#include <unordered_set>
+#include <array>
 #include <core/math.hpp>
 #include <core/chunk.hpp>
 #include <core/voxel.hpp>
 #include <core/chunk_mesh.hpp>
 #include <iostream>
 
+namespace
+{
+constexpr int VIEW_DISTANCE = 32;
+constexpr int LOAD_DISTANCE = VIEW_DISTANCE + 1;
+constexpr int MIN_CHUNK_Y = 0;
+constexpr int MAX_CHUNK_Y = 10;
+
+constexpr std::array<glm::ivec3, 6> NEIGHBOR_OFFSETS = {{
+    {1, 0, 0},
+    {-1, 0, 0},
+    {0, 1, 0},
+    {0, -1, 0},
+    {0, 0, 1},
+    {0, 0, -1},
+}};
+
+bool neighborsResolved(World &world, const ChunkPos &pos)
+{
+  for (const auto &offset : NEIGHBOR_OFFSETS)
+  {
+    const int ny = pos.y + offset.y;
+
+    // Outside the vertical load range is treated as air.
+    if (ny < MIN_CHUNK_Y || ny > MAX_CHUNK_Y)
+      continue;
+
+    if (!world.isChunkResolved(pos.x + offset.x, ny, pos.z + offset.z))
+      return false;
+  }
+
+  return true;
+}
+
+void dirtyChunkMesh(Chunk *chunk)
+{
+  if (chunk)
+    chunk->isMeshed = false;
+}
+} // namespace
+
 ChunkSystem::ChunkSystem(VkResource &resource, Camera &cam, World &w, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue)
     : vkResource(resource), camera(cam), loadQueue(lQueue), unloadQueue(uQueue), world(w), chunkMeshGenerator(w) {}
 
 std::vector<glm::ivec3> ChunkSystem::getChunksAround(glm::vec3 &position)
 {
-  static int viewDistance = 32;
   constexpr int chunkWorldSize = CHUNK_SIZE * VOXEL_SIZE;
 
   std::vector<glm::ivec3> coords;
 
   int centerX = floorDiv((int)position.x, chunkWorldSize);
-  int centerY = floorDiv((int)position.y, chunkWorldSize);
   int centerZ = floorDiv((int)position.z, chunkWorldSize);
 
-  for (int cx = centerX - viewDistance; cx <= centerX + viewDistance; cx++)
+  for (int cx = centerX - LOAD_DISTANCE; cx <= centerX + LOAD_DISTANCE; cx++)
   {
-    for (int cy = 0; cy <= 3; cy++)
+    for (int cy = MIN_CHUNK_Y; cy <= MAX_CHUNK_Y; cy++)
     {
-      for (int cz = centerZ - viewDistance; cz <= centerZ + viewDistance; cz++)
+      for (int cz = centerZ - LOAD_DISTANCE; cz <= centerZ + LOAD_DISTANCE; cz++)
       {
         int dx = cx - centerX;
-        int dy = cy - centerY;
         int dz = cz - centerZ;
 
-        if (dx * dx + dz * dz <= viewDistance * viewDistance)
+        if (dx * dx + dz * dz <= LOAD_DISTANCE * LOAD_DISTANCE)
         {
           coords.emplace_back(glm::ivec3{cx, cy, cz});
         }
@@ -44,13 +81,23 @@ std::vector<glm::ivec3> ChunkSystem::getChunksAround(glm::vec3 &position)
 void ChunkSystem::update()
 {
   glm::vec3 &cameraPosition = camera.position;
-  // glm::vec3 cameraPosition = glm::vec3(0, 0, 0);
 
   auto chunks = getChunksAround(cameraPosition);
 
+  constexpr int chunkWorldSize = CHUNK_SIZE * VOXEL_SIZE;
+  int centerX = floorDiv((int)cameraPosition.x, chunkWorldSize);
+  int centerZ = floorDiv((int)cameraPosition.z, chunkWorldSize);
+
   for (auto &coord : chunks)
   {
-    world.loadChunk(coord.x, coord.y, coord.z);
+    if (!world.loadChunk(coord.x, coord.y, coord.z))
+      continue;
+
+    // A newly stored chunk fills what neighbors previously treated as air — remesh them.
+    for (const auto &offset : NEIGHBOR_OFFSETS)
+    {
+      dirtyChunkMesh(world.getChunk(coord.x + offset.x, coord.y + offset.y, coord.z + offset.z));
+    }
   }
 
   std::vector<Vertex> worldVertices;
@@ -58,6 +105,11 @@ void ChunkSystem::update()
 
   for (auto &coord : chunks)
   {
+    int dx = coord.x - centerX;
+    int dz = coord.z - centerZ;
+    if (dx * dx + dz * dz > VIEW_DISTANCE * VIEW_DISTANCE)
+      continue;
+
     auto *chunk = world.getChunk(coord.x, coord.y, coord.z);
 
     if (!chunk)
@@ -65,6 +117,10 @@ void ChunkSystem::update()
 
     if (!chunk->isMeshed)
     {
+      // Wait until the +1 halo is resolved so border faces can be culled.
+      if (!neighborsResolved(world, chunk->pos))
+        continue;
+
       chunkMeshes.insert_or_assign(chunk->pos, chunkMeshGenerator.getChunkMesh(*chunk));
       chunk->isMeshed = true;
     }
