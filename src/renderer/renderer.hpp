@@ -44,6 +44,7 @@ private:
   double cpuMs;
   double gpuMs;
   uint32_t frameIndex = 0;
+  bool wireframeMode = true;
 
   void transition_image_layout(
       vk::raii::CommandBuffer &commandBuffer,
@@ -64,6 +65,7 @@ public:
   void render();
   void waitIdle();
   void drawGUI();
+  void toggleWireframeMode() { wireframeMode = !wireframeMode; }
 };
 
 #endif // RENDERER_HPP

@@ -74,7 +74,7 @@ vk::raii::Pipeline MainPipeline::createPipeline()
   vk::PipelineRasterizationStateCreateInfo rasterizer{
       .depthClampEnable = vk::False,
       .rasterizerDiscardEnable = vk::False,
-      .polygonMode = vk::PolygonMode::eLine,
+      .polygonMode = vk::PolygonMode::eFill,
       .cullMode = vk::CullModeFlagBits::eBack,
       .frontFace = vk::FrontFace::eCounterClockwise,
       .depthBiasEnable = vk::False,

@@ -8,42 +8,41 @@
 
 namespace
 {
-constexpr int VIEW_DISTANCE = 32;
-constexpr int LOAD_DISTANCE = VIEW_DISTANCE + 1;
-constexpr int MIN_CHUNK_Y = 0;
-constexpr int MAX_CHUNK_Y = 10;
+  constexpr int VIEW_DISTANCE = 12;
+  constexpr int LOAD_DISTANCE = VIEW_DISTANCE + 1;
+  constexpr int MIN_CHUNK_Y = 0;
+  constexpr int MAX_CHUNK_Y = 10;
 
-constexpr std::array<glm::ivec3, 6> NEIGHBOR_OFFSETS = {{
-    {1, 0, 0},
-    {-1, 0, 0},
-    {0, 1, 0},
-    {0, -1, 0},
-    {0, 0, 1},
-    {0, 0, -1},
-}};
+  constexpr std::array<glm::ivec3, 6> NEIGHBOR_OFFSETS = {{
+      {1, 0, 0},
+      {-1, 0, 0},
+      {0, 1, 0},
+      {0, -1, 0},
+      {0, 0, 1},
+      {0, 0, -1},
+  }};
 
-bool neighborsResolved(World &world, const ChunkPos &pos)
-{
-  for (const auto &offset : NEIGHBOR_OFFSETS)
+  bool neighborsResolved(World &world, const ChunkPos &pos)
   {
-    const int ny = pos.y + offset.y;
+    for (const auto &offset : NEIGHBOR_OFFSETS)
+    {
+      const int ny = pos.y + offset.y;
 
-    // Outside the vertical load range is treated as air.
-    if (ny < MIN_CHUNK_Y || ny > MAX_CHUNK_Y)
-      continue;
+      if (ny < MIN_CHUNK_Y || ny > MAX_CHUNK_Y)
+        continue;
 
-    if (!world.isChunkResolved(pos.x + offset.x, ny, pos.z + offset.z))
-      return false;
+      if (!world.isChunkResolved(pos.x + offset.x, ny, pos.z + offset.z))
+        return false;
+    }
+
+    return true;
   }
 
-  return true;
-}
-
-void dirtyChunkMesh(Chunk *chunk)
-{
-  if (chunk)
-    chunk->isMeshed = false;
-}
+  void dirtyChunkMesh(Chunk *chunk)
+  {
+    if (chunk)
+      chunk->isMeshed = false;
+  }
 } // namespace
 
 ChunkSystem::ChunkSystem(VkResource &resource, Camera &cam, World &w, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue)
@@ -93,7 +92,6 @@ void ChunkSystem::update()
     if (!world.loadChunk(coord.x, coord.y, coord.z))
       continue;
 
-    // A newly stored chunk fills what neighbors previously treated as air — remesh them.
     for (const auto &offset : NEIGHBOR_OFFSETS)
     {
       dirtyChunkMesh(world.getChunk(coord.x + offset.x, coord.y + offset.y, coord.z + offset.z));
@@ -117,7 +115,6 @@ void ChunkSystem::update()
 
     if (!chunk->isMeshed)
     {
-      // Wait until the +1 halo is resolved so border faces can be culled.
       if (!neighborsResolved(world, chunk->pos))
         continue;
 

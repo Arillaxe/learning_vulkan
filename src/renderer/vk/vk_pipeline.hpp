@@ -33,7 +33,7 @@ protected:
   virtual vk::raii::DescriptorSet createDescriptorSet() = 0;
 
   static vk::VertexInputBindingDescription getBindingDescription();
-  static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescription();
+  static std::array<vk::VertexInputAttributeDescription, 3> getAttributeDescription();
 
   vk::Format findDepthFormat();
   vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);

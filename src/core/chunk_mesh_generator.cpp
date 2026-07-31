@@ -156,11 +156,14 @@ void ChunkMeshGenerator::emitQuad(
 {
   glm::ivec3 origin = glm::ivec3(chunkPos.x, chunkPos.y, chunkPos.z) * CHUNK_SIZE;
   glm::vec3 v0, v1, v2, v3;
+  float shade;
 
   switch (axis)
   {
   case Axis::X:
   {
+    shade = 0.8f;
+
     float x = origin.x + (axisDirection == AxisDirection::Positive ? slice + 1 : slice);
 
     v0 = {x, origin.y + row, origin.z + bit};
@@ -172,6 +175,8 @@ void ChunkMeshGenerator::emitQuad(
 
   case Axis::Y:
   {
+    shade = axisDirection == AxisDirection::Positive ? 1.0f : 0.5f;
+
     float y = origin.y + (axisDirection == AxisDirection::Positive ? slice + 1 : slice);
 
     v0 = {origin.x + row, y, origin.z + bit};
@@ -183,6 +188,8 @@ void ChunkMeshGenerator::emitQuad(
 
   case Axis::Z:
   {
+    shade = 0.65;
+
     float z = origin.z + (axisDirection == AxisDirection::Positive ? slice + 1 : slice);
 
     v0 = {origin.x + row, origin.y + bit, z};
@@ -195,10 +202,10 @@ void ChunkMeshGenerator::emitQuad(
 
   uint32_t baseVertex = static_cast<uint32_t>(vertices.size());
 
-  vertices.push_back({v0 * (float)VOXEL_SIZE});
-  vertices.push_back({v1 * (float)VOXEL_SIZE});
-  vertices.push_back({v2 * (float)VOXEL_SIZE});
-  vertices.push_back({v3 * (float)VOXEL_SIZE});
+  vertices.push_back({v0 * (float)VOXEL_SIZE, {0, 0}, shade});
+  vertices.push_back({v1 * (float)VOXEL_SIZE, {0, 0}, shade});
+  vertices.push_back({v2 * (float)VOXEL_SIZE, {0, 0}, shade});
+  vertices.push_back({v3 * (float)VOXEL_SIZE, {0, 0}, shade});
 
   if (axisDirection == AxisDirection::Positive)
   {

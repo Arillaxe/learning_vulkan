@@ -83,9 +83,28 @@ public:
         const int chunkY = floorDiv(hit.voxel.y, CHUNK_SIZE);
         const int chunkZ = floorDiv(hit.voxel.z, CHUNK_SIZE);
 
+        std::vector<glm::ivec3> directions = {
+            {1, 0, 0},
+            {-1, 0, 0},
+            {0, 1, 0},
+            {0, -1, 0},
+            {0, 0, 1},
+            {0, 0, -1},
+        };
+
         auto *chunk = world.getChunk(chunkX, chunkY, chunkZ);
 
         chunk->isMeshed = false;
+
+        for (auto &direction : directions)
+        {
+          auto *chunk = world.getChunk(chunkX + direction.x, chunkY + direction.y, chunkZ + direction.z);
+
+          if (chunk)
+          {
+            chunk->isMeshed = false;
+          }
+        }
       }
     }
     else if (glfwGetMouseButton(window.getGLFWWindowHandle(), GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE)

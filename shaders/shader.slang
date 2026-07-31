@@ -1,6 +1,7 @@
 struct VSInput {
     float3 inPosition;
     float2 inTexCoord;
+    float shade;
 };
 
 struct UniformBuffer {
@@ -29,7 +30,7 @@ VSOutput vertMain(VSInput input, uint vertexId: SV_VertexID) {
 
     output.pos = mul(ubo.proj, mul(ubo.view, mul(push.model, float4(input.inPosition, 1))));
     output.fragTexCoord = input.inTexCoord;
-    output.color = float4(1.0);
+    output.color = float4(1.0) * input.shade;
 
     return output;
 }

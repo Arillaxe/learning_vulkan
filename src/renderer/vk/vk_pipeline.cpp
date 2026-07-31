@@ -26,7 +26,7 @@ vk::VertexInputBindingDescription Vk_Pipeline::getBindingDescription()
   };
 }
 
-std::array<vk::VertexInputAttributeDescription, 2> Vk_Pipeline::getAttributeDescription()
+std::array<vk::VertexInputAttributeDescription, 3> Vk_Pipeline::getAttributeDescription()
 {
   return {{
       {
@@ -40,6 +40,12 @@ std::array<vk::VertexInputAttributeDescription, 2> Vk_Pipeline::getAttributeDesc
           .binding = 0,
           .format = vk::Format::eR32G32Sfloat,
           .offset = offsetof(Vertex, texCoord),
+      },
+      {
+          .location = 2,
+          .binding = 0,
+          .format = vk::Format::eR32Sfloat,
+          .offset = offsetof(Vertex, shade),
       },
   }};
 }
