@@ -80,9 +80,10 @@ public:
                        hit.voxel.z)
             ->type = 0;
         const int chunkX = floorDiv(hit.voxel.x, CHUNK_SIZE);
+        const int chunkY = floorDiv(hit.voxel.y, CHUNK_SIZE);
         const int chunkZ = floorDiv(hit.voxel.z, CHUNK_SIZE);
 
-        auto *chunk = world.getChunk(chunkX, chunkZ);
+        auto *chunk = world.getChunk(chunkX, chunkY, chunkZ);
 
         chunk->isMeshed = false;
       }

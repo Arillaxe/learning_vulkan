@@ -6,26 +6,28 @@ World::World(uint32_t seed) : chunkGenerator(seed)
 {
 }
 
-Chunk &World::loadChunk(int x, int z)
+void World::loadChunk(int x, int y, int z)
 {
-  ChunkPos pos{x, 0, z};
+  ChunkPos pos{x, y, z};
 
   auto exisitingChunkIt = chunks.find(pos);
 
   if (exisitingChunkIt != chunks.end())
   {
-    return exisitingChunkIt->second;
+    return;
   }
 
-  chunks.emplace(pos, chunkGenerator.generateChunk(x, z));
-  Chunk &newChunk = chunks.find(pos)->second;
+  auto chunk = chunkGenerator.generateChunk(x, y, z);
 
-  return newChunk;
+  if (chunk.voxelCount == 0 || chunk.voxelCount == std::pow(CHUNK_SIZE, 3))
+    return;
+
+  chunks.emplace(pos, std::move(chunk));
 }
 
-void World::unloadChunk(int x, int z)
+void World::unloadChunk(int x, int y, int z)
 {
-  ChunkPos pos{x, 0, z};
+  ChunkPos pos{x, y, z};
 
   chunks.erase(pos);
 }
@@ -50,9 +52,9 @@ Voxel *World::getVoxel(int x, int y, int z)
   return &it->second.voxels[localX][localY][localZ];
 }
 
-Chunk *World::getChunk(int x, int z)
+Chunk *World::getChunk(int x, int y, int z)
 {
-  ChunkPos pos{x, 0, z};
+  ChunkPos pos{x, y, z};
 
   auto chunkIt = chunks.find(pos);
 

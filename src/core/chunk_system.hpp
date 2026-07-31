@@ -32,10 +32,7 @@ private:
   std::unordered_map<ChunkPos, ChunkMesh, ChunkPosHash> chunkMeshes;
 
   void update();
-  std::vector<glm::ivec2> getChunksAround(glm::vec3 &position);
-  std::vector<glm::ivec2> getChunksDiff(
-      const std::vector<glm::ivec2> &oldChunks,
-      const std::vector<glm::ivec2> &newChunks);
+  std::vector<glm::ivec3> getChunksAround(glm::vec3 &position);
 
 public:
   ChunkSystem(VkResource &resource, Camera &cam, World &w, ThreadQueue<GPUChunkMesh> &loadQueue, ThreadQueue<ChunkPos> &unloadQueue);

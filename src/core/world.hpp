@@ -14,13 +14,11 @@ private:
 
 public:
   World(uint32_t seed);
-  Chunk &loadChunk(int x, int z);
-  void unloadChunk(int x, int z);
-  Chunk *getChunk(int x, int z);
-  void generateChunkMeshes();
-  void generateChunkMesh(int x, int z);
-  void regenNeighboringChunkMeshes(int x, int z);
   std::unordered_map<ChunkPos, Chunk, ChunkPosHash> &getChunks() { return chunks; }
+
+  void loadChunk(int x, int y, int z);
+  void unloadChunk(int x, int y, int z);
+  Chunk *getChunk(int x, int y, int z);
   Voxel *getVoxel(int x, int y, int z);
 };
 

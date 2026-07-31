@@ -31,6 +31,7 @@ struct Chunk
   ChunkPos pos;
   Voxel voxels[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE];
   bool isMeshed = false;
+  uint32_t voxelCount = 0;
 };
 
 #endif // CHUNK_HPP

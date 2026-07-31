@@ -9,49 +9,36 @@
 ChunkSystem::ChunkSystem(VkResource &resource, Camera &cam, World &w, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue)
     : vkResource(resource), camera(cam), loadQueue(lQueue), unloadQueue(uQueue), world(w), chunkMeshGenerator(w) {}
 
-std::vector<glm::ivec2> ChunkSystem::getChunksAround(glm::vec3 &position)
+std::vector<glm::ivec3> ChunkSystem::getChunksAround(glm::vec3 &position)
 {
   static int viewDistance = 32;
   constexpr int chunkWorldSize = CHUNK_SIZE * VOXEL_SIZE;
 
-  std::vector<glm::ivec2> coords;
+  std::vector<glm::ivec3> coords;
 
   int centerX = floorDiv((int)position.x, chunkWorldSize);
+  int centerY = floorDiv((int)position.y, chunkWorldSize);
   int centerZ = floorDiv((int)position.z, chunkWorldSize);
 
   for (int cx = centerX - viewDistance; cx <= centerX + viewDistance; cx++)
   {
-    for (int cz = centerZ - viewDistance; cz <= centerZ + viewDistance; cz++)
+    for (int cy = 0; cy <= 3; cy++)
     {
-      int dx = cx - centerX;
-      int dz = cz - centerZ;
-
-      if (dx * dx + dz * dz <= viewDistance * viewDistance)
+      for (int cz = centerZ - viewDistance; cz <= centerZ + viewDistance; cz++)
       {
-        coords.emplace_back(glm::ivec2{cx, cz});
+        int dx = cx - centerX;
+        int dy = cy - centerY;
+        int dz = cz - centerZ;
+
+        if (dx * dx + dz * dz <= viewDistance * viewDistance)
+        {
+          coords.emplace_back(glm::ivec3{cx, cy, cz});
+        }
       }
     }
   }
 
   return coords;
-}
-
-std::vector<glm::ivec2> ChunkSystem::getChunksDiff(
-    const std::vector<glm::ivec2> &oldChunks,
-    const std::vector<glm::ivec2> &newChunks)
-{
-  std::unordered_set<glm::ivec2, IVec2Hash> oldSet(oldChunks.begin(), oldChunks.end());
-
-  std::vector<glm::ivec2> diff;
-  diff.reserve(newChunks.size());
-
-  for (const auto &chunk : newChunks)
-  {
-    if (!oldSet.contains(chunk))
-      diff.push_back(chunk);
-  }
-
-  return diff;
 }
 
 void ChunkSystem::update()
@@ -61,16 +48,9 @@ void ChunkSystem::update()
 
   auto chunks = getChunksAround(cameraPosition);
 
-  static std::array<glm::ivec2, 4> neighbors = {{
-      {-1, 0},
-      {1, 0},
-      {0, -1},
-      {0, 1},
-  }};
-
   for (auto &coord : chunks)
   {
-    world.loadChunk(coord.x, coord.y);
+    world.loadChunk(coord.x, coord.y, coord.z);
   }
 
   std::vector<Vertex> worldVertices;
@@ -78,7 +58,10 @@ void ChunkSystem::update()
 
   for (auto &coord : chunks)
   {
-    auto *chunk = world.getChunk(coord.x, coord.y);
+    auto *chunk = world.getChunk(coord.x, coord.y, coord.z);
+
+    if (!chunk)
+      continue;
 
     if (!chunk->isMeshed)
     {

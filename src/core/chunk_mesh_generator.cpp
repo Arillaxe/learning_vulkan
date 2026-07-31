@@ -28,7 +28,7 @@ BinaryGrids ChunkMeshGenerator::getBinaryGrids(Chunk &chunk)
     }
   }
 
-  if (Chunk *east = world.getChunk(chunkPos.x + 1, chunkPos.z))
+  if (Chunk *east = world.getChunk(chunkPos.x + 1, chunkPos.y, chunkPos.z))
   {
     for (int y = 0; y < CHUNK_SIZE; y++)
     {
@@ -40,7 +40,7 @@ BinaryGrids ChunkMeshGenerator::getBinaryGrids(Chunk &chunk)
     }
   }
 
-  if (Chunk *west = world.getChunk(chunkPos.x - 1, chunkPos.z))
+  if (Chunk *west = world.getChunk(chunkPos.x - 1, chunkPos.y, chunkPos.z))
   {
     for (int y = 0; y < CHUNK_SIZE; y++)
     {
@@ -52,9 +52,31 @@ BinaryGrids ChunkMeshGenerator::getBinaryGrids(Chunk &chunk)
     }
   }
 
-  // TODO add y chunks
+  if (Chunk *top = world.getChunk(chunkPos.x, chunkPos.y + 1, chunkPos.z))
+  {
+    for (int x = 0; x < CHUNK_SIZE; x++)
+    {
+      for (int z = 0; z < CHUNK_SIZE; z++)
+      {
+        if (top->voxels[x][0][z].type != 0)
+          grids.xz[x + 1][z + 1] |= (1u << (CHUNK_SIZE + 1));
+      }
+    }
+  }
 
-  if (Chunk *north = world.getChunk(chunkPos.x, chunkPos.z + 1))
+  if (Chunk *top = world.getChunk(chunkPos.x, chunkPos.y - 1, chunkPos.z))
+  {
+    for (int x = 0; x < CHUNK_SIZE; x++)
+    {
+      for (int z = 0; z < CHUNK_SIZE; z++)
+      {
+        if (top->voxels[x][CHUNK_SIZE - 1][z].type != 0)
+          grids.xz[x + 1][z + 1] |= (1u << (0));
+      }
+    }
+  }
+
+  if (Chunk *north = world.getChunk(chunkPos.x, chunkPos.y, chunkPos.z + 1))
   {
     for (int x = 0; x < CHUNK_SIZE; x++)
     {
@@ -66,7 +88,7 @@ BinaryGrids ChunkMeshGenerator::getBinaryGrids(Chunk &chunk)
     }
   }
 
-  if (Chunk *south = world.getChunk(chunkPos.x, chunkPos.z - 1))
+  if (Chunk *south = world.getChunk(chunkPos.x, chunkPos.y, chunkPos.z - 1))
   {
     for (int x = 0; x < CHUNK_SIZE; x++)
     {

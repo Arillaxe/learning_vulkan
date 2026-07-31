@@ -12,7 +12,7 @@ private:
 public:
   ChunkGenerator(uint32_t seed);
 
-  Chunk generateChunk(int x, int z);
+  Chunk generateChunk(int x, int y, int z);
 };
 
 #endif // CHUNK_GENERATOR_HPP
