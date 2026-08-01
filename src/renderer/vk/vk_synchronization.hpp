@@ -9,7 +9,6 @@ private:
   VkContext &vkContext;
   vk::raii::Fence drawFence;
   vk::raii::Semaphore presentCompleteSemaphore;
-  vk::raii::Semaphore renderFinishedSemaphore;
 
   vk::raii::Fence createFence();
   vk::raii::Semaphore createSemaphore();
@@ -21,7 +20,6 @@ public:
 
   vk::raii::Fence &getDrawFence() { return drawFence; }
   vk::raii::Semaphore &getPresentCompleteSemaphore() { return presentCompleteSemaphore; }
-  vk::raii::Semaphore &getRenderFinishedSemaphore() { return renderFinishedSemaphore; }
 };
 
 #endif // VK_SYNCHRONIZATION_HPP

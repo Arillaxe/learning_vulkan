@@ -21,6 +21,8 @@ private:
   vk::raii::SwapchainKHR swapchain;
   std::vector<vk::Image> images;
   std::vector<vk::raii::ImageView> imageViews;
+  // One per swapchain image: present may hold the semaphore until that image is re-acquired.
+  std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
 
   vk::raii::Image depthImage;
   vk::raii::DeviceMemory depthImageMemory;
@@ -36,6 +38,7 @@ private:
   vk::PresentModeKHR getPresentMode();
   vk::raii::SwapchainKHR createSwapchain(const vk::SwapchainKHR &oldSwapchain);
   std::vector<vk::raii::ImageView> createImageViews();
+  std::vector<vk::raii::Semaphore> createRenderFinishedSemaphores();
   vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
 public:
@@ -50,6 +53,7 @@ public:
   vk::Extent2D &getExtent() { return extent; }
   std::vector<vk::Image> &getImages() { return images; }
   std::vector<vk::raii::ImageView> &getImageViews() { return imageViews; }
+  vk::raii::Semaphore &getRenderFinishedSemaphore(uint32_t imageIndex) { return renderFinishedSemaphores[imageIndex]; }
   vk::raii::Image &getDepthImage() { return depthImage; }
   vk::raii::ImageView &getColorImageView() { return colorImageView; }
   vk::raii::Image &getColorImage() { return colorImage; }

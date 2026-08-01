@@ -287,14 +287,14 @@ void Renderer::render()
 			.commandBufferCount = 1,
 			.pCommandBuffers = &*commandBuffer,
 			.signalSemaphoreCount = 1,
-			.pSignalSemaphores = &*vkSynchronization[frameIndex].getRenderFinishedSemaphore(),
+			.pSignalSemaphores = &*vkSwapchain.getRenderFinishedSemaphore(imageIndex),
 	};
 
 	vkContext.getQueue().submit(submitInfo, *vkSynchronization[frameIndex].getDrawFence());
 
 	const vk::PresentInfoKHR presentInfoKHR{
 			.waitSemaphoreCount = 1,
-			.pWaitSemaphores = &*vkSynchronization[frameIndex].getRenderFinishedSemaphore(),
+			.pWaitSemaphores = &*vkSwapchain.getRenderFinishedSemaphore(imageIndex),
 			.swapchainCount = 1,
 			.pSwapchains = &*vkSwapchain.getSwapchain(),
 			.pImageIndices = &imageIndex,

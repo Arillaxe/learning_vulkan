@@ -16,6 +16,7 @@ VkSwapchain::VkSwapchain(VkContext &context, Window &win, VkResource &resource, 
       swapchain(createSwapchain(VK_NULL_HANDLE)),
       images(swapchain.getImages()),
       imageViews(createImageViews()),
+      renderFinishedSemaphores(createRenderFinishedSemaphores()),
       depthImage(resource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e4, findDepthFormat(), vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment)),
       depthImageMemory(resource.getImageMemory(depthImage, vk::MemoryPropertyFlagBits::eDeviceLocal)),
       depthImageView(resource.createImageView(depthImage, findDepthFormat(), vk::ImageAspectFlagBits::eDepth, 1)),
@@ -123,6 +124,19 @@ std::vector<vk::raii::ImageView> VkSwapchain::createImageViews()
   return imageViews;
 }
 
+std::vector<vk::raii::Semaphore> VkSwapchain::createRenderFinishedSemaphores()
+{
+  std::vector<vk::raii::Semaphore> semaphores;
+  semaphores.reserve(images.size());
+
+  for (size_t i = 0; i < images.size(); ++i)
+  {
+    semaphores.emplace_back(vkContext.getDevice(), vk::SemaphoreCreateInfo{});
+  }
+
+  return semaphores;
+}
+
 vk::Format VkSwapchain::findDepthFormat()
 {
   return findSupportedFormat(
@@ -173,6 +187,8 @@ void VkSwapchain::recreateSwapchain()
   images = swapchain.getImages();
   imageViews.clear();
   imageViews = createImageViews();
+  renderFinishedSemaphores.clear();
+  renderFinishedSemaphores = createRenderFinishedSemaphores();
 
   depthImage = vkResource.createImage(extent.width, extent.height, 1, vk::SampleCountFlagBits::e4, findDepthFormat(), vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment);
   depthImageMemory = vkResource.getImageMemory(depthImage, vk::MemoryPropertyFlagBits::eDeviceLocal);

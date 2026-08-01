@@ -5,8 +5,7 @@
 VkSynchronization::VkSynchronization(VkContext &context)
     : vkContext(context),
       drawFence(createFence()),
-      presentCompleteSemaphore(createSemaphore()),
-      renderFinishedSemaphore(createSemaphore()) {}
+      presentCompleteSemaphore(createSemaphore()) {}
 
 vk::raii::Fence VkSynchronization::createFence()
 {
