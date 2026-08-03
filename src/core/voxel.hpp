@@ -7,7 +7,6 @@ constexpr int VOXEL_SIZE = 10;
 
 struct Voxel
 {
-  glm::vec3 position;
   uint32_t type;
 };
 

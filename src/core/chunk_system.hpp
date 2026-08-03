@@ -33,6 +33,7 @@ private:
 
   void update();
   std::vector<glm::ivec3> getChunksAround(glm::vec3 &position);
+  std::vector<glm::ivec3> getRegionsAround(glm::vec3 &position);
 
 public:
   ChunkSystem(VkResource &resource, Camera &cam, World &w, ThreadQueue<GPUChunkMesh> &loadQueue, ThreadQueue<ChunkPos> &unloadQueue);

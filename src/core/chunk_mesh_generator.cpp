@@ -152,7 +152,8 @@ void ChunkMeshGenerator::emitQuad(
     int height,
     ChunkPos &chunkPos,
     std::vector<Vertex> &vertices,
-    std::vector<uint32_t> &indices)
+    std::vector<uint32_t> &indices,
+    int size)
 {
   glm::ivec3 origin = glm::ivec3(chunkPos.x, chunkPos.y, chunkPos.z) * CHUNK_SIZE;
   glm::vec3 v0, v1, v2, v3;
@@ -202,10 +203,10 @@ void ChunkMeshGenerator::emitQuad(
 
   uint32_t baseVertex = static_cast<uint32_t>(vertices.size());
 
-  vertices.push_back({v0 * (float)VOXEL_SIZE, {0, 0}, shade});
-  vertices.push_back({v1 * (float)VOXEL_SIZE, {0, 0}, shade});
-  vertices.push_back({v2 * (float)VOXEL_SIZE, {0, 0}, shade});
-  vertices.push_back({v3 * (float)VOXEL_SIZE, {0, 0}, shade});
+  vertices.push_back({v0 * (float)VOXEL_SIZE * (float)size, {0, 0}, shade});
+  vertices.push_back({v1 * (float)VOXEL_SIZE * (float)size, {0, 0}, shade});
+  vertices.push_back({v2 * (float)VOXEL_SIZE * (float)size, {0, 0}, shade});
+  vertices.push_back({v3 * (float)VOXEL_SIZE * (float)size, {0, 0}, shade});
 
   if (axisDirection == AxisDirection::Positive)
   {
@@ -224,7 +225,8 @@ void ChunkMeshGenerator::greedyMeshFaces(
     AxisDirection axisDirection,
     ChunkPos &chunkPos,
     std::vector<Vertex> &vertices,
-    std::vector<uint32_t> &indices)
+    std::vector<uint32_t> &indices,
+    int size)
 {
   for (int i = 0; i < CHUNK_SIZE; i++)
   {
@@ -248,7 +250,7 @@ void ChunkMeshGenerator::greedyMeshFaces(
           swizzledFaces[k + 1][j + 1] &= ~mask;
         }
 
-        emitQuad(axis, axisDirection, j, i, offset, width, height, chunkPos, vertices, indices);
+        emitQuad(axis, axisDirection, j, i, offset, width, height, chunkPos, vertices, indices, size);
 
         row &= ~mask;
       }
@@ -256,7 +258,7 @@ void ChunkMeshGenerator::greedyMeshFaces(
   }
 }
 
-ChunkMesh ChunkMeshGenerator::getChunkMesh(Chunk &chunk)
+ChunkMesh ChunkMeshGenerator::getChunkMesh(Chunk &chunk, int size)
 {
   std::vector<Vertex> vertices{};
   std::vector<uint32_t> indices{};
@@ -278,7 +280,7 @@ ChunkMesh ChunkMeshGenerator::getChunkMesh(Chunk &chunk)
   {
     BinaryGrid axisFaces = getAxisFaces(config.occupancy, config.axisDirection == AxisDirection::Positive);
     BinaryGrid axisFacesSwizzled = swizzleFaces(axisFaces);
-    greedyMeshFaces(axisFacesSwizzled, config.axis, config.axisDirection, chunkPos, vertices, indices);
+    greedyMeshFaces(axisFacesSwizzled, config.axis, config.axisDirection, chunkPos, vertices, indices, size);
   }
 
   return {chunkPos, vertices, indices};

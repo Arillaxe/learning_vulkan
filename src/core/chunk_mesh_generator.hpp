@@ -51,19 +51,21 @@ class ChunkMeshGenerator
       int height,
       ChunkPos &chunkPos,
       std::vector<Vertex> &vertices,
-      std::vector<uint32_t> &indices);
+      std::vector<uint32_t> &indices,
+      int size);
   void greedyMeshFaces(
       BinaryGrid &swizzledFaces,
       Axis axis,
       AxisDirection axisDirection,
       ChunkPos &chunkPos,
       std::vector<Vertex> &vertices,
-      std::vector<uint32_t> &indices);
+      std::vector<uint32_t> &indices,
+      int size);
 
 public:
   ChunkMeshGenerator(World &w);
 
-  ChunkMesh getChunkMesh(Chunk &chunk);
+  ChunkMesh getChunkMesh(Chunk &chunk, int size);
 };
 
 #endif // CHUNK_MESH_GENERATOR_HPP

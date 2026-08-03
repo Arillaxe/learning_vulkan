@@ -71,11 +71,6 @@ Chunk ChunkGenerator::generateChunk(int chunkX, int chunkY, int chunkZ)
 
         Voxel &voxel = voxels[localX][localY][localZ];
 
-        voxel.position = glm::vec3(
-            worldX * VOXEL_SIZE,
-            worldY * VOXEL_SIZE,
-            worldZ * VOXEL_SIZE);
-
         if (worldY <= worldHeight)
         {
           voxel.type = 1;

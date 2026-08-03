@@ -27,6 +27,42 @@ bool World::loadChunk(int x, int y, int z)
   return true;
 }
 
+bool World::loadRegion(int x, int y, int z)
+{
+  ChunkPos pos{x, y, z};
+
+  if (regions.find(pos) != regions.end())
+  {
+    return false;
+  }
+
+  Chunks newRegionChunks;
+
+  int chunksPerRegion = REGION_SIZE / CHUNK_SIZE;
+
+  for (int i = 0; i < chunksPerRegion; i++)
+  {
+    for (int j = 0; j < chunksPerRegion; j++)
+    {
+      for (int k = 0; k < chunksPerRegion; k++)
+      {
+        Chunk c = chunkGenerator.generateChunk(x * chunksPerRegion + i, y * chunksPerRegion + j, z * chunksPerRegion + k);
+
+        if (c.voxelCount > 0)
+        {
+          newRegionChunks.emplace(ChunkPos{i, j, k}, c);
+        }
+      }
+    }
+  }
+
+  auto [newRegionIt, inserted] = regions.emplace(pos, std::move(newRegionChunks));
+
+  newRegionIt->second.buildLODs();
+
+  return true;
+}
+
 void World::unloadChunk(int x, int y, int z)
 {
   ChunkPos pos{x, y, z};
@@ -73,4 +109,18 @@ Chunk *World::getChunk(int x, int y, int z)
   }
 
   return &chunkIt->second;
+}
+
+Region *World::getRegion(int x, int y, int z)
+{
+  ChunkPos pos{x, y, z};
+
+  auto regionIt = regions.find(pos);
+
+  if (regionIt == regions.end())
+  {
+    return nullptr;
+  }
+
+  return &regionIt->second;
 }
