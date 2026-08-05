@@ -32,10 +32,10 @@ private:
   MainPipeline mainPipeline;
   Camera &camera;
   vk::raii::QueryPool queryPool;
-  std::unordered_map<ChunkPos, GPUChunkMesh, ChunkPosHash> chunkMeshes;
+  std::unordered_map<glm::ivec3, GPUChunkMesh> chunkMeshes;
   ThreadQueue<GPUChunkMesh> &loadQueue;
-  ThreadQueue<ChunkPos> &unloadQueue;
-  ChunkPos toUnload;
+  ThreadQueue<glm::ivec3> &unloadQueue;
+  glm::ivec3 toUnload;
   GPUChunkMesh toLoad;
   GUI gui;
   uint32_t loadQueueSize;
@@ -58,7 +58,7 @@ private:
       vk::ImageAspectFlags image_aspect_flags);
 
 public:
-  Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue);
+  Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<glm::ivec3> &uQueue);
 
   VkResource &getVkResource() { return vkResource; }
 

@@ -9,9 +9,12 @@ class ChunkGenerator
 private:
   siv::PerlinNoise perlin;
 
+  int getWorldHeight(int x, int y);
+
 public:
   ChunkGenerator(uint32_t seed);
 
+  std::vector<int> getRenderChunksYs(int x, int y);
   Chunk generateChunk(int x, int y, int z);
 };
 

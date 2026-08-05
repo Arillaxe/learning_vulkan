@@ -2,36 +2,24 @@
 #define CHUNK_HPP
 
 #include <core/voxel.hpp>
+#include <glm/gtx/hash.hpp>
 
 constexpr int CHUNK_SIZE = 16;
 
-struct ChunkPos
+typedef std::array<Voxel, CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE> Voxels;
+
+class Chunk
 {
-  int x;
-  int y;
-  int z;
-
-  bool operator==(const ChunkPos &) const = default;
-};
-
-struct ChunkPosHash
-{
-  std::size_t operator()(const ChunkPos &pos) const
-  {
-    std::size_t h1 = std::hash<int>{}(pos.x);
-    std::size_t h2 = std::hash<int>{}(pos.y);
-    std::size_t h3 = std::hash<int>{}(pos.z);
-
-    return h1 ^ (h2 << 1) ^ (h3 << 2);
-  }
-};
-
-struct Chunk
-{
-  ChunkPos pos;
-  Voxel voxels[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE];
+public:
+  glm::ivec3 pos;
+  Voxels voxels;
   bool isMeshed = false;
   uint32_t voxelCount = 0;
+
+  Voxel &getVoxel(int x, int y, int z)
+  {
+    return voxels.at(x * CHUNK_SIZE * CHUNK_SIZE + y * CHUNK_SIZE + z);
+  }
 };
 
 #endif // CHUNK_HPP

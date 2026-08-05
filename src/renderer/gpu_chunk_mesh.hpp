@@ -8,7 +8,7 @@
 class GPUChunkMesh
 {
 private:
-  ChunkPos chunkPos;
+  glm::ivec3 chunkPos;
   VkResource *vkResource;
   vk::raii::Buffer vertexBuffer = nullptr;
   vk::raii::DeviceMemory vertexMemory = nullptr;
@@ -17,7 +17,7 @@ private:
   uint32_t indicesCount = 0;
 
 public:
-  GPUChunkMesh(VkResource *resource, ChunkPos pos);
+  GPUChunkMesh(VkResource *resource, glm::ivec3 pos);
   GPUChunkMesh() {}
 
   static int destroyed;
@@ -36,7 +36,7 @@ public:
   vk::raii::Buffer &getVertexBuffer() { return vertexBuffer; }
   vk::raii::Buffer &getIndexBuffer() { return indexBuffer; }
   uint32_t getIndicesCount() { return indicesCount; }
-  const ChunkPos &getChunkPos() const { return chunkPos; }
+  const glm::ivec3 &getChunkPos() const { return chunkPos; }
 
   void generateRenderMesh(std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);
 };

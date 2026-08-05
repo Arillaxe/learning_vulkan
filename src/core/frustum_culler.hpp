@@ -2,7 +2,6 @@
 #define FRUSTUM_CULLER_HPP
 
 #include <core/camera.hpp>
-#include <core/chunk.hpp>
 
 struct Plane
 {
@@ -15,7 +14,7 @@ class FrustumCuller
 public:
   FrustumCuller(const Camera &camera, float aspectRatio);
 
-  bool isVisible(const ChunkPos &chunkPos) const;
+  bool isVisible(const glm::ivec3 &chunkPos) const;
 
 private:
   Plane planes[6];

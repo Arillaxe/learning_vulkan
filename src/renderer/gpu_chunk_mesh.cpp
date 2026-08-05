@@ -3,7 +3,7 @@
 
 int GPUChunkMesh::destroyed = 0;
 
-GPUChunkMesh::GPUChunkMesh(VkResource *resource, ChunkPos pos) : vkResource(resource), chunkPos(pos) {}
+GPUChunkMesh::GPUChunkMesh(VkResource *resource, glm::ivec3 pos) : vkResource(resource), chunkPos(pos) {}
 
 void GPUChunkMesh::generateRenderMesh(std::vector<Vertex> &vertices, std::vector<uint32_t> &indices)
 {

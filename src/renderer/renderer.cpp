@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <core/frustum_culler.hpp>
 
-Renderer::Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue)
+Renderer::Renderer(Window &win, Scene &_scene, Camera &cam, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<glm::ivec3> &uQueue)
 		: window(win),
 			vkContext(win),
 			vkCommand(vkContext),

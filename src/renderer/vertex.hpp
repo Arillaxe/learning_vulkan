@@ -7,7 +7,7 @@ struct Vertex
 {
   glm::vec3 position;
   glm::vec2 texCoord;
-  float shade;
+  glm::vec3 normal;
 };
 
 #endif // VERTEX_HPP

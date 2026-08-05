@@ -1,4 +1,5 @@
 #include <core/frustum_culler.hpp>
+#include <core/chunk.hpp>
 
 Plane makePlane(float a, float b, float c, float d)
 {
@@ -79,7 +80,7 @@ bool FrustumCuller::testAABB(const glm::vec3 &min,
   return true;
 }
 
-bool FrustumCuller::isVisible(const ChunkPos &chunkPos) const
+bool FrustumCuller::isVisible(const glm::ivec3 &chunkPos) const
 {
   glm::vec3 min(
       chunkPos.x * CHUNK_SIZE * VOXEL_SIZE,

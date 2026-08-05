@@ -44,8 +44,8 @@ std::array<vk::VertexInputAttributeDescription, 3> Vk_Pipeline::getAttributeDesc
       {
           .location = 2,
           .binding = 0,
-          .format = vk::Format::eR32Sfloat,
-          .offset = offsetof(Vertex, shade),
+          .format = vk::Format::eR32G32B32Sfloat,
+          .offset = offsetof(Vertex, normal),
       },
   }};
 }

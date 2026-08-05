@@ -10,8 +10,6 @@ namespace
 {
   constexpr int VIEW_DISTANCE = 12;
   constexpr int LOAD_DISTANCE = VIEW_DISTANCE + 1;
-  constexpr int MIN_CHUNK_Y = 0;
-  constexpr int MAX_CHUNK_Y = 10;
 
   constexpr std::array<glm::ivec3, 6> NEIGHBOR_OFFSETS = {{
       {1, 0, 0},
@@ -22,14 +20,14 @@ namespace
       {0, 0, -1},
   }};
 
-  bool neighborsResolved(World &world, const ChunkPos &pos)
+  bool neighborsResolved(World &world, const glm::ivec3 &pos)
   {
     for (const auto &offset : NEIGHBOR_OFFSETS)
     {
       const int ny = pos.y + offset.y;
 
-      if (ny < MIN_CHUNK_Y || ny > MAX_CHUNK_Y)
-        continue;
+      // if (ny < MIN_CHUNK_Y || ny > MAX_CHUNK_Y)
+      //   continue;
 
       if (!world.isChunkResolved(pos.x + offset.x, ny, pos.z + offset.z))
         return false;
@@ -45,55 +43,29 @@ namespace
   }
 } // namespace
 
-ChunkSystem::ChunkSystem(VkResource &resource, Camera &cam, World &w, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<ChunkPos> &uQueue)
+ChunkSystem::ChunkSystem(VkResource &resource, Camera &cam, World &w, ThreadQueue<GPUChunkMesh> &lQueue, ThreadQueue<glm::ivec3> &uQueue)
     : vkResource(resource), camera(cam), loadQueue(lQueue), unloadQueue(uQueue), world(w), chunkMeshGenerator(w) {}
 
-std::vector<glm::ivec3> ChunkSystem::getChunksAround(glm::vec3 &position)
+std::vector<glm::ivec2> ChunkSystem::getChunksAround(glm::vec3 &position)
 {
   constexpr int chunkWorldSize = CHUNK_SIZE * VOXEL_SIZE;
 
-  std::vector<glm::ivec3> coords;
+  std::vector<glm::ivec2> coords;
 
   int centerX = floorDiv((int)position.x, chunkWorldSize);
   int centerZ = floorDiv((int)position.z, chunkWorldSize);
 
   for (int cx = centerX - LOAD_DISTANCE; cx <= centerX + LOAD_DISTANCE; cx++)
   {
-    for (int cy = MIN_CHUNK_Y; cy <= MAX_CHUNK_Y; cy++)
-    {
-      for (int cz = centerZ - LOAD_DISTANCE; cz <= centerZ + LOAD_DISTANCE; cz++)
-      {
-        int dx = cx - centerX;
-        int dz = cz - centerZ;
-
-        if (dx * dx + dz * dz <= LOAD_DISTANCE * LOAD_DISTANCE)
-        {
-          coords.emplace_back(glm::ivec3{cx, cy, cz});
-        }
-      }
-    }
-  }
-
-  return coords;
-}
-
-std::vector<glm::ivec3> ChunkSystem::getRegionsAround(glm::vec3 &position)
-{
-  constexpr int regionWorldSize = REGION_SIZE * VOXEL_SIZE;
-
-  std::vector<glm::ivec3> coords;
-
-  int centerX = floorDiv((int)position.x, regionWorldSize);
-  int centerZ = floorDiv((int)position.z, regionWorldSize);
-
-  for (int cx = centerX - 1; cx <= centerX + 1; cx++)
-  {
-    for (int cz = centerZ - 1; cz <= centerZ + 1; cz++)
+    for (int cz = centerZ - LOAD_DISTANCE; cz <= centerZ + LOAD_DISTANCE; cz++)
     {
       int dx = cx - centerX;
       int dz = cz - centerZ;
 
-      coords.emplace_back(glm::ivec3{cx, 0, cz});
+      if (dx * dx + dz * dz <= LOAD_DISTANCE * LOAD_DISTANCE)
+      {
+        coords.emplace_back(glm::ivec2{cx, cz});
+      }
     }
   }
 
@@ -102,69 +74,41 @@ std::vector<glm::ivec3> ChunkSystem::getRegionsAround(glm::vec3 &position)
 
 void ChunkSystem::update()
 {
-  glm::vec3 &cameraPosition = camera.position;
-
-  // auto chunks = getChunksAround(cameraPosition);
+  // glm::vec3 &cameraPosition = camera.position;
+  glm::vec3 cameraPosition = glm::vec3(0, 0, 0);
 
   constexpr int chunkWorldSize = CHUNK_SIZE * VOXEL_SIZE;
   int centerX = floorDiv((int)cameraPosition.x, chunkWorldSize);
   int centerZ = floorDiv((int)cameraPosition.z, chunkWorldSize);
 
-  // for (auto &coord : chunks)
-  // {
-  //   if (!world.loadChunk(coord.x, coord.y, coord.z))
-  //     continue;
+  auto chunks = getChunksAround(cameraPosition);
 
-  //   for (const auto &offset : NEIGHBOR_OFFSETS)
-  //   {
-  //     dirtyChunkMesh(world.getChunk(coord.x + offset.x, coord.y + offset.y, coord.z + offset.z));
-  //   }
-  // }
-
-  auto regions = getRegionsAround(cameraPosition);
-
-  for (auto &coord : regions)
+  for (auto &coord : chunks)
   {
-    world.loadRegion(coord.x, coord.y, coord.z);
+    world.loadChunk(coord.x, coord.y);
   }
 
-  std::vector<Vertex> worldVertices;
-  std::vector<uint32_t> worldIndices;
-
-  int lodLevel = 0;
-
-  for (auto &regionCoord : regions)
+  for (auto &coord : chunks)
   {
-    auto *region = world.getRegion(regionCoord.x, regionCoord.y, regionCoord.z);
-    auto &chunksMap = region->getLODChunks(lodLevel);
+    auto yChunks = world.getRenderChunks(coord.x, coord.y);
 
-    for (auto &[pos, chunk] : chunksMap)
+    for (auto *chunk : yChunks)
     {
-      if (!chunk.isMeshed)
+
+      if (!chunk->isMeshed)
       {
-        if (!neighborsResolved(world, chunk.pos))
-          continue;
+        // if (!neighborsResolved(world, chunk->pos))
+        //   continue;
 
-        chunkMeshes.insert_or_assign(chunk.pos, chunkMeshGenerator.getChunkMesh(chunk, 1 << lodLevel));
-        chunk.isMeshed = true;
-      }
+        chunkMeshes.insert_or_assign(chunk->pos, chunkMeshGenerator.getChunkMesh(*chunk, 1));
+        chunk->isMeshed = true;
 
-      auto &mesh = chunkMeshes.find(chunk.pos)->second;
+        auto &mesh = chunkMeshes.find(chunk->pos)->second;
 
-      uint32_t baseIndex = worldVertices.size();
-      worldVertices.insert(worldVertices.end(), mesh.vertices.begin(), mesh.vertices.end());
-
-      for (auto index : mesh.indices)
-      {
-        worldIndices.push_back(baseIndex + index);
+        GPUChunkMesh gpuMesh(&vkResource, chunk->pos);
+        gpuMesh.generateRenderMesh(mesh.vertices, mesh.indices);
+        loadQueue.push(std::move(gpuMesh));
       }
     }
   }
-
-  if (worldVertices.size() == 0)
-    return;
-
-  GPUChunkMesh gpuMesh(&vkResource, {0});
-  gpuMesh.generateRenderMesh(worldVertices, worldIndices);
-  loadQueue.push(std::move(gpuMesh));
 }

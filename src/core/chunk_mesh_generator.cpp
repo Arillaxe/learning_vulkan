@@ -7,7 +7,6 @@ BinaryGrids ChunkMeshGenerator::getBinaryGrids(Chunk &chunk)
 {
   BinaryGrids grids{};
 
-  const auto &voxels = chunk.voxels;
   const auto &chunkPos = chunk.pos;
 
   for (int x = 0; x < CHUNK_SIZE; x++)
@@ -16,7 +15,7 @@ BinaryGrids ChunkMeshGenerator::getBinaryGrids(Chunk &chunk)
     {
       for (int z = 0; z < CHUNK_SIZE; z++)
       {
-        auto &voxel = voxels[x][y][z];
+        auto &voxel = chunk.getVoxel(x, y, z);
 
         if (voxel.type == 0)
           continue;
@@ -34,7 +33,7 @@ BinaryGrids ChunkMeshGenerator::getBinaryGrids(Chunk &chunk)
     {
       for (int z = 0; z < CHUNK_SIZE; z++)
       {
-        if (east->voxels[0][y][z].type != 0)
+        if (east->getVoxel(0, y, z).type != 0)
           grids.yz[y + 1][z + 1] |= (1u << (CHUNK_SIZE + 1));
       }
     }
@@ -46,7 +45,7 @@ BinaryGrids ChunkMeshGenerator::getBinaryGrids(Chunk &chunk)
     {
       for (int z = 0; z < CHUNK_SIZE; z++)
       {
-        if (west->voxels[CHUNK_SIZE - 1][y][z].type != 0)
+        if (west->getVoxel(CHUNK_SIZE - 1, y, z).type != 0)
           grids.yz[y + 1][z + 1] |= (1u << (0));
       }
     }
@@ -58,7 +57,7 @@ BinaryGrids ChunkMeshGenerator::getBinaryGrids(Chunk &chunk)
     {
       for (int z = 0; z < CHUNK_SIZE; z++)
       {
-        if (top->voxels[x][0][z].type != 0)
+        if (top->getVoxel(x, 0, z).type != 0)
           grids.xz[x + 1][z + 1] |= (1u << (CHUNK_SIZE + 1));
       }
     }
@@ -70,7 +69,7 @@ BinaryGrids ChunkMeshGenerator::getBinaryGrids(Chunk &chunk)
     {
       for (int z = 0; z < CHUNK_SIZE; z++)
       {
-        if (top->voxels[x][CHUNK_SIZE - 1][z].type != 0)
+        if (top->getVoxel(x, CHUNK_SIZE - 1, z).type != 0)
           grids.xz[x + 1][z + 1] |= (1u << (0));
       }
     }
@@ -82,7 +81,7 @@ BinaryGrids ChunkMeshGenerator::getBinaryGrids(Chunk &chunk)
     {
       for (int y = 0; y < CHUNK_SIZE; y++)
       {
-        if (north->voxels[x][y][0].type != 0)
+        if (north->getVoxel(x, y, 0).type != 0)
           grids.xy[x + 1][y + 1] |= (1u << (CHUNK_SIZE + 1));
       }
     }
@@ -94,7 +93,7 @@ BinaryGrids ChunkMeshGenerator::getBinaryGrids(Chunk &chunk)
     {
       for (int y = 0; y < CHUNK_SIZE; y++)
       {
-        if (south->voxels[x][y][CHUNK_SIZE - 1].type != 0)
+        if (south->getVoxel(x, y, CHUNK_SIZE - 1).type != 0)
           grids.xy[x + 1][y + 1] |= (1u << (0));
       }
     }
@@ -150,20 +149,20 @@ void ChunkMeshGenerator::emitQuad(
     int bit,
     int width,
     int height,
-    ChunkPos &chunkPos,
+    glm::ivec3 &chunkPos,
     std::vector<Vertex> &vertices,
     std::vector<uint32_t> &indices,
     int size)
 {
   glm::ivec3 origin = glm::ivec3(chunkPos.x, chunkPos.y, chunkPos.z) * CHUNK_SIZE;
   glm::vec3 v0, v1, v2, v3;
-  float shade;
+  glm::vec3 normal;
 
   switch (axis)
   {
   case Axis::X:
   {
-    shade = 0.8f;
+    normal = glm::vec3(1, 0, 0);
 
     float x = origin.x + (axisDirection == AxisDirection::Positive ? slice + 1 : slice);
 
@@ -176,7 +175,7 @@ void ChunkMeshGenerator::emitQuad(
 
   case Axis::Y:
   {
-    shade = axisDirection == AxisDirection::Positive ? 1.0f : 0.5f;
+    normal = glm::vec3(0, 1, 0);
 
     float y = origin.y + (axisDirection == AxisDirection::Positive ? slice + 1 : slice);
 
@@ -189,7 +188,7 @@ void ChunkMeshGenerator::emitQuad(
 
   case Axis::Z:
   {
-    shade = 0.65;
+    normal = glm::vec3(0, 0, 1);
 
     float z = origin.z + (axisDirection == AxisDirection::Positive ? slice + 1 : slice);
 
@@ -201,12 +200,17 @@ void ChunkMeshGenerator::emitQuad(
   }
   }
 
+  if (axisDirection == AxisDirection::Negative)
+  {
+    normal *= -1;
+  }
+
   uint32_t baseVertex = static_cast<uint32_t>(vertices.size());
 
-  vertices.push_back({v0 * (float)VOXEL_SIZE * (float)size, {0, 0}, shade});
-  vertices.push_back({v1 * (float)VOXEL_SIZE * (float)size, {0, 0}, shade});
-  vertices.push_back({v2 * (float)VOXEL_SIZE * (float)size, {0, 0}, shade});
-  vertices.push_back({v3 * (float)VOXEL_SIZE * (float)size, {0, 0}, shade});
+  vertices.push_back({v0 * (float)VOXEL_SIZE * (float)size, {0, 0}, normal});
+  vertices.push_back({v1 * (float)VOXEL_SIZE * (float)size, {0, 0}, normal});
+  vertices.push_back({v2 * (float)VOXEL_SIZE * (float)size, {0, 0}, normal});
+  vertices.push_back({v3 * (float)VOXEL_SIZE * (float)size, {0, 0}, normal});
 
   if (axisDirection == AxisDirection::Positive)
   {
@@ -223,7 +227,7 @@ void ChunkMeshGenerator::greedyMeshFaces(
     BinaryGrid &swizzledFaces,
     Axis axis,
     AxisDirection axisDirection,
-    ChunkPos &chunkPos,
+    glm::ivec3 &chunkPos,
     std::vector<Vertex> &vertices,
     std::vector<uint32_t> &indices,
     int size)
@@ -263,8 +267,6 @@ ChunkMesh ChunkMeshGenerator::getChunkMesh(Chunk &chunk, int size)
   std::vector<Vertex> vertices{};
   std::vector<uint32_t> indices{};
 
-  auto &chunkPos = chunk.pos;
-
   BinaryGrids occupancy = getBinaryGrids(chunk);
 
   std::array<FaceConfig, 6> faceConfigs = {{
@@ -280,8 +282,8 @@ ChunkMesh ChunkMeshGenerator::getChunkMesh(Chunk &chunk, int size)
   {
     BinaryGrid axisFaces = getAxisFaces(config.occupancy, config.axisDirection == AxisDirection::Positive);
     BinaryGrid axisFacesSwizzled = swizzleFaces(axisFaces);
-    greedyMeshFaces(axisFacesSwizzled, config.axis, config.axisDirection, chunkPos, vertices, indices, size);
+    greedyMeshFaces(axisFacesSwizzled, config.axis, config.axisDirection, chunk.pos, vertices, indices, size);
   }
 
-  return {chunkPos, vertices, indices};
+  return {vertices, indices};
 }

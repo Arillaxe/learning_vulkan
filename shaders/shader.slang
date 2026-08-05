@@ -1,7 +1,7 @@
 struct VSInput {
     float3 inPosition;
     float2 inTexCoord;
-    float shade;
+    float3 normal;
 };
 
 struct UniformBuffer {
@@ -24,13 +24,15 @@ struct PushConstants {
 [[vk::push_constant]]
 PushConstants push;
 
+static float3 sunDir = normalize(float3(0.5, 1.0, 0.3));
+
 [shader("vertex")]
 VSOutput vertMain(VSInput input, uint vertexId: SV_VertexID) {
     VSOutput output;
 
     output.pos = mul(ubo.proj, mul(ubo.view, mul(push.model, float4(input.inPosition, 1))));
     output.fragTexCoord = input.inTexCoord;
-    output.color = float4(1.0) * input.shade;
+    output.color = max(dot(input.normal, sunDir), 0.2);
 
     return output;
 }

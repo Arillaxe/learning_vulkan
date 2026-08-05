@@ -49,7 +49,7 @@ class ChunkMeshGenerator
       int bit,
       int width,
       int height,
-      ChunkPos &chunkPos,
+      glm::ivec3 &chunkPos,
       std::vector<Vertex> &vertices,
       std::vector<uint32_t> &indices,
       int size);
@@ -57,7 +57,7 @@ class ChunkMeshGenerator
       BinaryGrid &swizzledFaces,
       Axis axis,
       AxisDirection axisDirection,
-      ChunkPos &chunkPos,
+      glm::ivec3 &chunkPos,
       std::vector<Vertex> &vertices,
       std::vector<uint32_t> &indices,
       int size);

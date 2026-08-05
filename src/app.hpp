@@ -32,7 +32,7 @@ private:
 
   std::thread chunkSystemThread;
   ThreadQueue<GPUChunkMesh> loadQueue;
-  ThreadQueue<ChunkPos> unloadQueue;
+  ThreadQueue<glm::ivec3> unloadQueue;
 
   Renderer renderer;
   ChunkSystem chunkSystem;

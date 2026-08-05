@@ -6,66 +6,33 @@ World::World(uint32_t seed) : chunkGenerator(seed)
 {
 }
 
-bool World::loadChunk(int x, int y, int z)
+void World::loadChunk(int x, int z)
 {
-  ChunkPos pos{x, y, z};
+  std::vector<int> chunkYs = chunkGenerator.getRenderChunksYs(x, z);
 
-  if (chunks.find(pos) != chunks.end() || generatedEmpty.find(pos) != generatedEmpty.end())
+  for (auto &y : chunkYs)
   {
-    return false;
-  }
+    glm::ivec3 pos{x, y, z};
 
-  auto chunk = chunkGenerator.generateChunk(x, y, z);
-
-  if (chunk.voxelCount == 0)
-  {
-    generatedEmpty.insert(pos);
-    return false;
-  }
-
-  chunks.emplace(pos, std::move(chunk));
-  return true;
-}
-
-bool World::loadRegion(int x, int y, int z)
-{
-  ChunkPos pos{x, y, z};
-
-  if (regions.find(pos) != regions.end())
-  {
-    return false;
-  }
-
-  Chunks newRegionChunks;
-
-  int chunksPerRegion = REGION_SIZE / CHUNK_SIZE;
-
-  for (int i = 0; i < chunksPerRegion; i++)
-  {
-    for (int j = 0; j < chunksPerRegion; j++)
+    if (chunks.find(pos) != chunks.end() || generatedEmpty.find(pos) != generatedEmpty.end())
     {
-      for (int k = 0; k < chunksPerRegion; k++)
-      {
-        Chunk c = chunkGenerator.generateChunk(x * chunksPerRegion + i, y * chunksPerRegion + j, z * chunksPerRegion + k);
-
-        if (c.voxelCount > 0)
-        {
-          newRegionChunks.emplace(ChunkPos{i, j, k}, c);
-        }
-      }
+      continue;
     }
+
+    auto chunk = chunkGenerator.generateChunk(x, y, z);
+
+    if (chunk.voxelCount == 0)
+    {
+      generatedEmpty.insert(pos);
+    }
+
+    chunks.emplace(pos, std::move(chunk));
   }
-
-  auto [newRegionIt, inserted] = regions.emplace(pos, std::move(newRegionChunks));
-
-  newRegionIt->second.buildLODs();
-
-  return true;
 }
 
 void World::unloadChunk(int x, int y, int z)
 {
-  ChunkPos pos{x, y, z};
+  glm::ivec3 pos{x, y, z};
 
   chunks.erase(pos);
   generatedEmpty.erase(pos);
@@ -73,7 +40,7 @@ void World::unloadChunk(int x, int y, int z)
 
 bool World::isChunkResolved(int x, int y, int z) const
 {
-  ChunkPos pos{x, y, z};
+  glm::ivec3 pos{x, y, z};
   return chunks.find(pos) != chunks.end() || generatedEmpty.find(pos) != generatedEmpty.end();
 }
 
@@ -83,7 +50,7 @@ Voxel *World::getVoxel(int x, int y, int z)
   const int chunkY = floorDiv(y, CHUNK_SIZE);
   const int chunkZ = floorDiv(z, CHUNK_SIZE);
 
-  ChunkPos pos{chunkX, chunkY, chunkZ};
+  glm::ivec3 pos{chunkX, chunkY, chunkZ};
 
   auto it = chunks.find(pos);
 
@@ -94,12 +61,31 @@ Voxel *World::getVoxel(int x, int y, int z)
   const int localY = floorMod(y, CHUNK_SIZE);
   const int localZ = floorMod(z, CHUNK_SIZE);
 
-  return &it->second.voxels[localX][localY][localZ];
+  return &it->second.getVoxel(localX, localY, localZ);
+}
+
+std::vector<Chunk *> World::getRenderChunks(int x, int z)
+{
+  std::vector<Chunk *> ret;
+
+  auto chunkYs = chunkGenerator.getRenderChunksYs(x, z);
+
+  for (auto &y : chunkYs)
+  {
+    auto chunkIt = chunks.find({x, y, z});
+
+    if (chunkIt != chunks.end())
+    {
+      ret.push_back(&chunkIt->second);
+    }
+  }
+
+  return ret;
 }
 
 Chunk *World::getChunk(int x, int y, int z)
 {
-  ChunkPos pos{x, y, z};
+  glm::ivec3 pos{x, y, z};
 
   auto chunkIt = chunks.find(pos);
 
@@ -109,18 +95,4 @@ Chunk *World::getChunk(int x, int y, int z)
   }
 
   return &chunkIt->second;
-}
-
-Region *World::getRegion(int x, int y, int z)
-{
-  ChunkPos pos{x, y, z};
-
-  auto regionIt = regions.find(pos);
-
-  if (regionIt == regions.end())
-  {
-    return nullptr;
-  }
-
-  return &regionIt->second;
 }

@@ -21,9 +21,11 @@
 // GLM. The force macro must be defined before any glm header is included so the
 // precompiled configuration matches how the rest of the project uses glm.
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/hash.hpp>
 
 // Vulkan. vk.hpp sets the required VULKAN_HPP_* macros before pulling in
 // vulkan_raii.hpp (the single heaviest header in the build).
